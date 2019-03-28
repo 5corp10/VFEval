@@ -1,0 +1,20 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1552653347991.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "452413666",
+    "id" : "FCA751A8",
+    "lastKnownWriteTime" : 1552499816,
+    "last_content_update" : 1552499816,
+    "path" : "C:/Herman/data/VFEval/R/main.R",
+    "project_path" : "R/main.R",
+    "properties" : {
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

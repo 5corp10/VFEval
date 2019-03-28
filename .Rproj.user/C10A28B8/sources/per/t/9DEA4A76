@@ -1,0 +1,29 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1553291658136.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "9DEA4A76",
+    "lastKnownWriteTime" : 0,
+    "last_content_update" : 1553291658136,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "BEB4EF54",
+        "caption" : "df.interx",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=df.interx&cache_key=BEB4EF54",
+        "displayedObservations" : 16,
+        "environment" : "",
+        "object" : "df.interx",
+        "preview" : 0,
+        "totalObservations" : 16,
+        "variables" : 6
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}

@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1552252767922.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "15|1|126|0|\n135|1|192|0|\n199|1|260|0|\n267|1|299|0|\n306|1|424|0|\n431|1|474|0|\n525|1|540|0|\n548|1|557|0|\n",
+    "hash" : "3511662585",
+    "id" : "A985F768",
+    "lastKnownWriteTime" : 1553291709,
+    "last_content_update" : 1553291709235,
+    "path" : "~/GitHub/VFEval/R/main.R",
+    "project_path" : "R/main.R",
+    "properties" : {
+        "cursorPosition" : "484,57",
+        "scrollLine" : "261"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

@@ -1,0 +1,29 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1549825714604.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "DCCBD1B0",
+    "lastKnownWriteTime" : 32651569751457901,
+    "last_content_update" : 1549825714604,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "558C6759",
+        "caption" : "df.results_md_cluster",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=df.results_md_cluster&cache_key=558C6759",
+        "displayedObservations" : 6,
+        "environment" : "",
+        "object" : "df.results_md_cluster",
+        "preview" : 0,
+        "totalObservations" : 6,
+        "variables" : 6
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}

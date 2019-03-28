@@ -1,0 +1,681 @@
+# You can learn more about package authoring with RStudio at:
+#
+#   http://r-pkgs.had.co.nz/
+#
+# Some useful keyboard shortcuts for package authoring:
+#
+#   Build and Reload Package:  'Ctrl + Shift + B'
+#   Check Package:             'Ctrl + Shift + E'
+#   Test Package:              'Ctrl + Shift + T'
+
+#' Initialize package (Run first)
+#'
+#' Import dependent packages, import patient data and point mapping, and set constants
+#' @export
+pkgInit = function(data_format = 2)
+{
+  #import libraries
+  library("tidyverse")
+  library("devtools")
+  library("roxygen2")
+  library("ggplot2")
+  library("cowplot")
+  library("UpSetR")
+  library("venneuler")
+  library("readxl")
+  library("reshape2")
+
+  if(data_format == 1){
+    # specify excel file
+    excel.file = file.path("Auk_VFs.xlsx")
+
+    # import all data
+    assign("df.all_data", read_xlsx(excel.file, sheet = 1), envir = .GlobalEnv)
+
+    # import point mapping
+    assign("df.pt_mapping", read_xlsx(excel.file, sheet = 2), envir = .GlobalEnv)
+
+    # set indexing constants for excising VF data from df.all_data
+    assign("COORD_V_OFST", 1, envir = .GlobalEnv)
+    assign("COORD_V_SIZE", 2, envir = .GlobalEnv)
+    assign("VF_V_OFST", 2, envir = .GlobalEnv)
+    assign("VF_V_SIZE", 1, envir = .GlobalEnv)
+    assign("T_H_OFST", 56, envir = .GlobalEnv)
+    assign("VF_H_SIZE", 76, envir = .GlobalEnv)
+    assign("TD_H_OFST", T_H_OFST + VF_H_SIZE + 1, envir = .GlobalEnv)
+    assign("TDP_H_OFST", TD_H_OFST + VF_H_SIZE + 1, envir = .GlobalEnv)
+    assign("PD_H_OFST", TDP_H_OFST + VF_H_SIZE + 1, envir = .GlobalEnv)
+    assign("PDP_H_OFST", PD_H_OFST + VF_H_SIZE + 1, envir = .GlobalEnv)
+
+    assign("FIXLOSS_H_OFST", 33, envir = .GlobalEnv)
+    assign("FPOSERR_H_OFST", 34, envir = .GlobalEnv)
+    assign("FNEGERR_H_OFST", 36, envir = .GlobalEnv)
+
+    assign("GHT_H_OFST", 51, envir = .GlobalEnv)
+    assign("VFI_H_OFST", 50, envir = .GlobalEnv)
+    assign("MD_H_OFST", 47, envir = .GlobalEnv)
+    assign("PSD_H_OFST", 49, envir = .GlobalEnv)
+  }
+  else if(data_format == 2){
+    # specify excel file and import data
+    excel.file = file.path("../Initial_March_trimmed/VF2016_ID_24-2.xlsx")
+    df.Vf_2016 = read_xlsx(excel.file, sheet = 1, range = cell_rows(c(5, NA)), col_names = F)
+    excel.file = file.path("../Initial_March_trimmed/VF2017_ID_24-2.xlsx")
+    df.Vf_2017 = read_xlsx(excel.file, sheet = 1, range = cell_rows(c(5, NA)), col_names = F)
+    excel.file = file.path("../Initial_March_trimmed/VF2018_ID_24-2.xlsx")
+    df.Vf_2018 = read_xlsx(excel.file, sheet = 1, range = cell_rows(c(5, NA)),col_names = F)
+
+    # import point mapping
+    #assign("df.pt_mapping", read_xlsx("Auk_VFs.xlsx", sheet = 2), envir = .GlobalEnv)
+
+    # set indexing constants for excising VF data from df.all_data
+    assign("COORD_V_OFST", 1, envir = .GlobalEnv)
+    assign("COORD_V_SIZE", 2, envir = .GlobalEnv)
+    assign("VF_V_OFST", 0, envir = .GlobalEnv)
+    assign("VF_V_SIZE", 1, envir = .GlobalEnv)
+    assign("T_H_OFST", 50, envir = .GlobalEnv)
+    assign("VF_H_SIZE", 76, envir = .GlobalEnv)
+    assign("TD_H_OFST", T_H_OFST + VF_H_SIZE + 1, envir = .GlobalEnv)
+    assign("TDP_H_OFST", TD_H_OFST + VF_H_SIZE + 1, envir = .GlobalEnv)
+    assign("PD_H_OFST", TDP_H_OFST + VF_H_SIZE + 1, envir = .GlobalEnv)
+    assign("PDP_H_OFST", PD_H_OFST + VF_H_SIZE + 1, envir = .GlobalEnv)
+
+    assign("FIXLOSS_H_OFST", 27, envir = .GlobalEnv)
+    assign("FPOSERR_H_OFST", 30, envir = .GlobalEnv)
+    assign("FNEGERR_H_OFST", 34, envir = .GlobalEnv)
+
+    assign("GHT_H_OFST", 45, envir = .GlobalEnv)
+    assign("VFI_H_OFST", 44, envir = .GlobalEnv)
+    assign("MD_H_OFST", 41, envir = .GlobalEnv)
+    assign("PSD_H_OFST", 43, envir = .GlobalEnv)
+
+    # make one large data frame of all Vfs
+    assign("df.all_data", rbind(df.Vf_2016, df.Vf_2017[VF_V_OFST:nrow(df.Vf_2017),], df.Vf_2018[VF_V_OFST:nrow(df.Vf_2018),]), envir = .GlobalEnv)
+  }
+
+  # read patient number
+  assign("NUM_PAT", nrow(df.all_data) - VF_V_OFST, envir = .GlobalEnv)
+
+  assign("df.criteria_results", data.frame("Patient ID"=1:NUM_PAT, "FOST"=1:NUM_PAT, "MHPA"=1:NUM_PAT, "UKGTS"=1:NUM_PAT, "GHT"=1:NUM_PAT), envir = .GlobalEnv)
+}
+
+#' Partial STATPAC SFA
+#'
+#' Print reliability and global indices, criteria results, and VF maps (TD, TDP, PD, PDP) for a given patient
+#' @param pat_id Patient position in the list on the excel spreadsheet
+#' @return grid_plot The grid plot of the STATPAC SFA analysis.
+#' @export
+printVfMap = function(pat_id)
+{
+  # extract reliability indices
+  fix_loss1 = df.all_data[VF_V_OFST+pat_id,FIXLOSS_H_OFST]
+  fix_loss2 = df.all_data[VF_V_OFST+pat_id,FIXLOSS_H_OFST+1]
+  f_pos_err = percent(as.double(df.all_data[VF_V_OFST+pat_id,FPOSERR_H_OFST]))
+  f_neg_err = percent(as.double(df.all_data[VF_V_OFST+pat_id,FNEGERR_H_OFST]))
+
+  list1 = c(paste0("Fixation losses: ", fix_loss1, "/", fix_loss2), paste0("False POS errors: ", f_pos_err), paste0("False NEG errors: ", f_neg_err))
+
+  # extract global indices
+  ght = df.all_data[VF_V_OFST+pat_id,GHT_H_OFST]
+  vfi = percent(as.double(df.all_data[VF_V_OFST+pat_id,VFI_H_OFST]))
+  md = df.all_data[VF_V_OFST+pat_id,MD_H_OFST-1]
+  if(!is.na(df.all_data[VF_V_OFST+pat_id,MD_H_OFST]))
+    md_p = percent(as.double(df.all_data[VF_V_OFST+pat_id,MD_H_OFST]))
+  else
+    md_p = "NA"
+  psd = df.all_data[VF_V_OFST+pat_id,(PSD_H_OFST-1)]
+  if(!is.na(df.all_data[VF_V_OFST+pat_id,PSD_H_OFST]))
+    psd_p = percent(as.double(df.all_data[VF_V_OFST+pat_id,PSD_H_OFST]))
+  else
+    psd_p = "NA"
+
+  list2 = c(paste0("GHT: ", ght), paste0("VFI: ", vfi), paste0("MD: ", md, " dB (<", md_p, ")"), paste0("PSD: ", psd, " dB (<", psd_p, ")"))
+
+  indices = ggdraw() + draw_text(list1, x = 0.2, y = c(0.9, 0.8, 0.7), size = 12, hjust = 0) + draw_text(list2, x = 0.2, y = c(0.55, 0.45, 0.35, 0.25), size = 12, hjust = 0)
+
+  # apply criteria and generate result
+  list3 = c(paste0("Foster: ", checkFostCriteria(pat_id)), paste0("MHPA: ", checkMhpaCriteria(pat_id)), paste0("UKGTS: ", checkUkgtsCriteria(pat_id)), paste0("GHT: ", checkGhtCriteria(pat_id)))
+  results = ggdraw() + draw_text(list3, x = 0.2, y = c(0.8, 0.7, 0.6, 0.5), size = 12, hjust = 0)
+
+  # extract coordinates
+  df.coord = data.frame(t(df.all_data[COORD_V_OFST:(COORD_V_OFST+COORD_V_SIZE-1),T_H_OFST:(T_H_OFST+VF_H_SIZE-1)]))
+  colnames(df.coord) = c("x", "y")
+
+  # generate plot of threshold
+  df.T = data.frame(df.coord, t(df.all_data[VF_V_OFST+pat_id, T_H_OFST:(T_H_OFST+VF_H_SIZE-1)]))
+  colnames(df.T) = c("x", "y", "T")
+  plot.T = ggplot(df.T, aes(x, y, label = T)) + geom_point(alpha=0) + geom_text(aes(label=T),hjust=0.5, vjust=0.5) + geom_hline(yintercept = 0) + geom_vline(xintercept = 0)
+
+  # generate plot of total deviation
+  df.TD = data.frame(df.coord, t(df.all_data[VF_V_OFST+pat_id, TD_H_OFST:(TD_H_OFST+VF_H_SIZE-1)]))
+  colnames(df.TD) = c("x", "y", "TD")
+  plot.TD = ggplot(df.TD, aes(x, y, label = TD)) + geom_point(alpha=0) + geom_text(aes(label=TD),hjust=0.5, vjust=0.5) + geom_hline(yintercept = 0) + geom_vline(xintercept = 0)
+
+  # generate plot of pattern deviation
+  df.PD = data.frame(df.coord, t(df.all_data[VF_V_OFST+pat_id, PD_H_OFST:(PD_H_OFST+VF_H_SIZE-1)]))
+  colnames(df.PD) = c("x", "y", "PD")
+  plot.PD = ggplot(df.PD, aes(x, y, label = PD)) + geom_point(alpha=0) + geom_text(aes(label=PD),hjust=0.5, vjust=0.5) + geom_hline(yintercept = 0) + geom_vline(xintercept = 0)
+
+  # generate plot of total deviation probability
+  df.TDp = data.frame(df.coord, t(df.all_data[VF_V_OFST+pat_id, TDP_H_OFST:(TDP_H_OFST+VF_H_SIZE-1)]))
+  colnames(df.TDp) = c("x", "y", "TDp")
+  plot.TDp = ggplot(df.TDp, aes(x, y, label = TDp)) + geom_point(alpha=0) + geom_text(aes(label=TDp),hjust=0.5, vjust=0.5) + geom_hline(yintercept = 0) + geom_vline(xintercept = 0)
+
+  # generate plot of pattern deviation probability
+  df.PDp = data.frame(df.coord, t(df.all_data[VF_V_OFST+pat_id, PDP_H_OFST:(PDP_H_OFST+VF_H_SIZE-1)]))
+  colnames(df.PDp) = c("x", "y", "PDp")
+  plot.PDp = ggplot(df.PDp, aes(x, y, label = PDp)) + geom_point(alpha=0) + geom_text(aes(label=PDp),hjust=0.5, vjust=0.5) + geom_hline(yintercept = 0) + geom_vline(xintercept = 0)
+
+  return(plot_grid(indices, results, plot.TD, plot.PD, plot.TDp, plot.PDp, ncol = 2, labels = c("", "", "TD", "PD", "TDp", "PDp")))
+}
+
+#' Euler diagram
+#'
+#' Print euler diagram (i.e. weighted venn diagram) for the overlapping criteria results groups
+#' @export
+printEulerDiag = function(df.results = df.criteria_results)
+{
+  f = m = u = g = f_m = f_u = f_g = m_u = m_g = u_g = f_m_u = f_m_g = f_u_g = m_u_g = f_m_u_g = o = 0
+
+  for(pat in 1:nrow(df.results)){
+    if((df.results[pat,2] == T) && (df.results[pat,3] == T) && (df.results[pat,4] == T) && (df.results[pat,4] == T))
+      f_m_u_g = f_m_u_g + 1
+    else if ((df.results[pat,2] == T) && (df.results[pat,3] == T) && (df.results[pat,4] == T))
+      f_m_u = f_m_u + 1
+    else if ((df.results[pat,2] == T) && (df.results[pat,3] == T) && (df.results[pat,5] == T))
+      f_m_g = f_m_g + 1
+    else if ((df.results[pat,2] == T) && (df.results[pat,4] == T) && (df.results[pat,5] == T))
+      f_u_g = f_u_g + 1
+    else if ((df.results[pat,3] == T) && (df.results[pat,4] == T) && (df.results[pat,5] == T))
+      m_u_g = m_u_g + 1
+    else if ((df.results[pat,2] == T) && (df.results[pat,3] == T))
+      f_m = f_m + 1
+    else if ((df.results[pat,2] == T) && (df.results[pat,4] == T))
+      f_u = f_u + 1
+    else if ((df.results[pat,2] == T) && (df.results[pat,5] == T))
+      f_g = f_g + 1
+    else if ((df.results[pat,3] == T) && (df.results[pat,4] == T))
+      m_u = m_u + 1
+    else if ((df.results[pat,3] == T) && (df.results[pat,5] == T))
+      m_g = m_g + 1
+    else if ((df.results[pat,4] == T) && (df.results[pat,5] == T))
+      u_g = u_g + 1
+    else if ((df.results[pat,2] == T))
+      f = f + 1
+    else if ((df.results[pat,3] == T))
+      m = m + 1
+    else if ((df.results[pat,4] == T))
+      u = u + 1
+    else if ((df.results[pat,5] == T))
+      g = g + 1
+    else
+      o = o + 1
+  }
+  areas = c("Foster"=f, "MHPA"=m, "UKGTS"=u, "GHT"=g,
+                   "Foster&MHPA"=f_m, "Foster&UKGTS"=f_u, "Foster&GHT"=f_g, "MHPA&UKGTS"=m_u, "MHPA&GHT"=m_g, "UKGTS&GHT"=u_g,
+                   "Foster&MHPA&UKGTS"=f_m_u, "Foster&MHPA&GHT"=f_m_g, "Foster&UKGTS&GHT"=f_u_g, "MHPA&UKGTS&GHT"=m_u_g,
+                   "Foster&MHPA&UKGTS&GHT"=f_m_u_g)
+
+  #areas = c("F1"=0,"M1"=0,"U1"=0,"G1"=0,"F1&M1"=0,"F1&U1"=0,"F1&G1"=0,"M1&U1"=0,"M1&G1"=0,"U1&G1"=0,"F1&M1&U1"=0,"F1&M1&G1"=0,"F1&U1&G1"=0,"M1&U1&G1"=0,"F1&M1&U1&G1"=0,
+  #          "F2"=0,"M2"=0,"U2"=0,"G2"=0,"F2&M2"=0,"F2&U2"=0,"F2&G2"=0,"M2&U2"=0,"M2&G2"=0,"U2&G2"=0,"F2&M2&U2"=0,"F2&M2&G2"=0,"F2&U2&G2"=0,"M2&U2&G2"=0,"F2&M2&U2&G2"=0,
+  #          "F3"=0,"M3"=0,"U3"=0,"G3"=0,"F3&M3"=0,"F3&U3"=0,"F3&G3"=0,"M3&U3"=0,"M3&G3"=0,"U3&G3"=0,"F3&M3&U3"=0,"F3&M3&G3"=0,"F3&U3&G3"=0,"M3&U3&G3"=0,"F3&M3&U3&G3"=0,
+  #          "F4"=0,"M4"=0,"U4"=0,"G4"=0,"F4&M4"=0,"F4&U4"=0,"F4&G4"=0,"M4&U4"=0,"M4&G4"=0,"U4&G4"=0,"F4&M4&U4"=0,"F4&M4&G4"=0,"F4&U4&G4"=0,"M4&U4&G4"=0,"F4&M4&U4&G4"=0,
+  #          "F5"=0,"M5"=0,"U5"=0,"G5"=0,"F5&M5"=0,"F5&U5"=0,"F5&G5"=0,"M5&U5"=0,"M5&G5"=0,"U5&G5"=0,"F5&M5&U5"=0,"F5&M5&G5"=0,"F5&U5&G5"=0,"M5&U5&G5"=0,"F5&M5&U5&G5"=0,
+  #          "F6"=0,"M6"=0,"U6"=0,"G6"=0,"F6&M6"=0,"F6&U6"=0,"F6&G6"=0,"M6&U6"=0,"M6&G6"=0,"U6&G6"=0,"F6&M6&U6"=0,"F6&M6&G6"=0,"F6&U6&G6"=0,"M6&U6&G6"=0,"F6&M6&U6&G6"=0)
+
+  v = venneuler(areas)
+  v$labels <- c("F&G", "M", "U", "")
+  plot(v)
+
+  text(.4, 0.9, paste0("F&G&M&U(grey) = ", f_m_u_g), cex=1)
+  text(.4, 0.85, paste0("M&U(green) = ", m_u), cex=1)
+  text(.6, 0.9, paste0("M(yellow) = ", m), cex=1)
+  text(.6, 0.85, paste0("U(blue) = ", u), cex=1)
+}
+
+#' Intersetion bar graph
+#'
+#' Print intersection bar graph to compare overlapping criteria results groups
+#' @export
+printIntersectionBarGraph = function(df.results = df.criteria_results)
+{
+  fost = double(1)
+  mhpa = double(1)
+  ukgts = double(1)
+  ght = double(1)
+
+  i = 1
+  j = 1
+  k = 1
+  l = 1
+
+  for(pat in 1:NUM_PAT){
+    if(df.results[pat,2] == T){
+      fost[i] = pat
+      i = i + 1
+    }
+    if(df.results[pat,3] == T){
+      mhpa[j] = pat
+      j = j + 1
+    }
+    if(df.results[pat,4] == T){
+      ukgts[k] = pat
+      k = k + 1
+    }
+    if(df.results[pat,5] == T){
+      ght[l] = pat
+      l = l + 1
+    }
+  }
+
+  list_input = list("Foster" = fost, "MHPA" = mhpa, "UKGTS" = ukgts, "GHT" = ght)
+  upset(fromList(list_input), sets = c("GHT", "UKGTS", "MHPA", "Foster"), keep.order = T, empty.intersections = T, order.by = "freq", text.scale = 2)
+}
+
+#' Clustered histogram for MD and criteria results
+#'
+#' Print histogram where criteria (Foster, MHPA, UKGTS, and GHT) results are clustered within their MD percentiles (10, 5, 2, 1, and 0.5 %)
+#' @export
+printClusteredHist = function(percentage.weight = FALSE)
+{
+  # create data frame to house graph variables
+  df.results_md_cluster = data.frame("MD"=1:6, "FOST"=1:6, "MHPA"=1:6, "UKGTS"=1:6, "GHT"=1:6, "NUM"=1:6)
+  df.results_md_cluster[,1] = c("<0.5%", "<1%", "<2%", "<5%", "<10%", ">10%")
+
+  for(row in 1:nrow(df.results_md_cluster)){
+    for(col in 2:ncol(df.results_md_cluster)){
+      df.results_md_cluster[row,col] = 0
+    }
+  }
+
+  for(pat in 1:NUM_PAT){
+    md = df.all_data[VF_V_OFST+pat,47]
+
+    if(is.na(md)){
+      row = 6
+    }
+    else if(md == "0.5%"){
+      row = 1
+    }
+    else if(md == "1.0%"){
+      row = 2
+    }
+    else if(md == "2.0%"){
+      row = 3
+    }
+    else if(md == "5.0%"){
+      row = 4
+    }
+    else if(md == "10.0%"){
+      row = 5
+    }
+    df.results_md_cluster[row,6] = df.results_md_cluster[row,6] + 1
+
+    for(col in 2:5){
+      if(df.criteria_results[pat,col] == TRUE)
+        df.results_md_cluster[row,col] = df.results_md_cluster[row,col] + 1
+
+    }
+  }
+
+  for(row in 1:6){
+    df.results_md_cluster[row,1] = paste0(df.results_md_cluster[row,1], "\nN=", df.results_md_cluster[row,6])
+  }
+
+
+  df.results_md_cluster = within(df.results_md_cluster,  MD <- factor(MD, levels=MD))
+
+  for(row in 1:6){
+    for(col in 2:6){
+      df.results_md_cluster[row,col] = round(df.results_md_cluster[row,col] / df.results_md_cluster[row,6], digits=2)
+    }
+  }
+  melted = melt(df.results_md_cluster[,1:5], variable.name = "criterion", value.name = "fraction")
+  plot.hist = ggplot(melted, aes(MD, fraction)) + geom_bar(aes(fill = criterion, group = criterion), position = "dodge", stat = "identity") +
+    geom_text(aes(label = fraction, group = criterion), size=4, hjust=0.5, vjust=-0.5, position=position_dodge(width = 1))
+  return(plot.hist)
+}
+
+#' Grid of Eulers
+#'
+#' Print Euler diagrams for each fo the MD percentiles (10, 5, 2, 1, and 0.5 %)
+#' @export
+printFigure1 = function()
+{
+  df.results_md_05 = df.results_md_1 = df.results_md_2 = df.results_md_5 = df.results_md_10 = df.results_md_11 = data.frame(Patient.ID=integer(), FOST=logical(), MHPA=logical(), UKGTS=logical(), GHT=logical())
+
+  for(pat in 1:NUM_PAT){
+    md = df.all_data[VF_V_OFST+pat,47]
+
+    if(is.na(md)){
+      df.results_md_11 = rbind(df.results_md_11, df.criteria_results[pat,])
+    }
+    else if(md == "0.5%"){
+      df.results_md_05 = rbind(df.results_md_05, df.criteria_results[pat,])
+    }
+    else if(md == "1.0%"){
+      df.results_md_1 = rbind(df.results_md_1, df.criteria_results[pat,])
+    }
+    else if(md == "2.0%"){
+      df.results_md_2 = rbind(df.results_md_2, df.criteria_results[pat,])
+    }
+    else if(md == "5.0%"){
+      df.results_md_5 = rbind(df.results_md_5, df.criteria_results[pat,])
+    }
+    else if(md == "10.0%"){
+      df.results_md_10 = rbind(df.results_md_10, df.criteria_results[pat,])
+    }
+  }
+
+  par(mfrow=c(2,3), mar=c(0.2,0.2,0.2,0.2))
+  printEulerDiag(df.results_md_05)
+  text(.5, 0.1, "<0.5%", cex=2)
+  printEulerDiag(df.results_md_1)
+  text(.5, 0.1, "<1.0%", cex=2)
+  printEulerDiag(df.results_md_2)
+  text(.5, 0.1, "<2.0%", cex=2)
+  printEulerDiag(df.results_md_5)
+  text(.5, 0.1, "<5.0%", cex=2)
+  printEulerDiag(df.results_md_10)
+  text(.5, 0.1, "<10.0%", cex=2)
+  printEulerDiag(df.results_md_11)
+  text(.5, 0.1, ">10.0%", cex=2)
+
+  p = recordPlot()
+  dev.off()
+  h = printClusteredHist()
+  plot_grid(p, h, ncol = 1, labels = c("", ""))
+}
+
+#' Print to pdf
+#'
+#' Create a .pdf file with desired STATPAC SFA plots.
+#' @export
+createPdf = function(first_pat = 1, last_pat = NUM_PAT)
+{
+   if((first_pat < 1) || (first_pat > NUM_PAT))
+    print("Invaild first patient number.")
+  else if((last_pat < 1) || (last_pat > NUM_PAT))
+    print("Invaild last patient number.")
+  else if(first_pat > last_pat)
+    print("Last patient number must be larger than first patient number.")
+  else {
+    pdf("test_vf_maps.pdf")
+
+    for (pat in first_pat:last_pat){
+      plot(printVfMap(pat))
+    }
+    dev.off()
+  }
+}
+
+
+#' VF criteria application
+#'
+#' Apply Foster, MHPA, UKGTS criteria to all patients from a properly-formatted excel spreadsheet
+#' @export
+assignVfCriteria = function()
+{
+  for(pat in 1:NUM_PAT)
+  {
+    df.criteria_results[pat,] <<- c(df.all_data[(pat+VF_V_OFST),1], checkFostCriteria(pat), checkMhpaCriteria(pat), checkUkgtsCriteria(pat), checkGhtCriteria(pat))
+  }
+}
+
+#' Foster criteria (FOST)
+#'
+#' Glaucoma Hemifield Test (GHT) “outside normal limits” AND a cluster of three contiguous points at the 5% level on the pattern deviation plot
+#' @param pat_id Patient position in the list on the excel spreadsheet
+#' @return BOOL Whether patient VF analysis resulted in a positive result.
+#' @export
+checkFostCriteria = function(pat_id)
+{
+  ght = df.all_data[VF_V_OFST+pat_id,GHT_H_OFST]
+  if(ght != "Outside normal limits")
+    return(FALSE)
+
+  df.VF_PDp = data.frame(t(df.all_data[VF_V_OFST+pat_id, PDP_H_OFST:(PDP_H_OFST+VF_H_SIZE-1)]))
+
+
+  for(pt1 in 1:VF_H_SIZE)
+  {
+    if(!(is.na(df.VF_PDp[pt1,1])))
+    {
+      if((df.VF_PDp[pt1,1] <= 5))
+      {
+        print(paste0("pt1=", pt1))
+
+        for(n1 in 4:11)
+        {
+          pt2 = df.pt_mapping[pt1,n1]
+
+          if(!(is.na(df.VF_PDp[pt2,1])))
+          {
+            if(df.VF_PDp[pt2,1] <= 5)
+            {
+              print(paste0("pt2=", pt2))
+
+              for(n2 in 4:11)
+              {
+                pt3 = df.pt_mapping[pt2,n2]
+
+                if(!(is.na(df.VF_PDp[pt3,1])))
+                {
+                  if(df.VF_PDp[pt3,1] <= 5)
+                  {
+                    if(pt1 != pt3)
+                    {
+                      print(paste0("pt3=", pt3))
+                      return(TRUE)
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return(FALSE)
+}
+
+#' Modified Hoddap-Parrish-Anderson criteria (MHPA)
+#'
+#' GHT outside normal limits; OR cluster of 3 points on the pattern deviation plot depressed at p<5%, one of which depressed at p<1%; OR PSD with p<5%
+#' @param pat_id Patient position in the list on the excel spreadsheet
+#' @return BOOL Whether patient VF analysis resulted in a positive result.
+#' @export
+checkMhpaCriteria = function(pat_id)
+{
+  # check GHT
+  ght = df.all_data[VF_V_OFST+pat_id,GHT_H_OFST]
+  if(ght == "Outside normal limits")
+    return(TRUE)
+
+  # check PSD
+  psd = df.all_data[VF_V_OFST+pat_id,PSD_H_OFST]
+  if(!(is.na(psd)))
+  {
+    if(psd != "10.0%")
+      return(TRUE)
+  }
+
+  # check cluster of 3 points
+  df.VF_PDp = data.frame(t(df.all_data[VF_V_OFST+pat_id, PDP_H_OFST:(PDP_H_OFST+VF_H_SIZE-1)]))
+
+  for(pt1 in 1:VF_H_SIZE)
+  {
+    if(!(is.na(df.VF_PDp[pt1,1])))
+    {
+      if((df.VF_PDp[pt1,1] <= 5))
+      {
+        print(paste0("pt1=", pt1))
+
+        for(n1 in 4:11)
+        {
+          pt2 = df.pt_mapping[pt1,n1]
+
+          if(!(is.na(df.VF_PDp[pt2,1])))
+          {
+            if(df.VF_PDp[pt2,1] <= 5)
+            {
+              print(paste0("pt2=", pt2))
+
+              for(n2 in 4:11)
+              {
+                pt3 = df.pt_mapping[pt2,n2]
+
+                if(!(is.na(df.VF_PDp[df.pt_mapping[pt2,n2],1])))
+                {
+                  if(df.VF_PDp[df.pt_mapping[pt2,n2],1] <= 5)
+                  {
+                    if(pt1 != pt3)
+                    {
+                      print(paste0("pt3=", pt3))
+
+                      if((df.VF_PDp[pt1,1] <= 1) || (df.VF_PDp[pt2,1] <= 1) || (df.VF_PDp[pt3,1] <= 1))
+                        return(TRUE)
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return(FALSE)
+}
+
+#' UKGTS criteria
+#'
+#' 2 or more contiguous points with P<0.01 loss or more; OR 3 or more contiguous points with P<0.05 loss or more; OR a 10-dB difference across the nasal horizontal midline at 2 or more adjacent points in the total deviation plot.
+#' @param pat_id Patient position in the list on the excel spreadsheet
+#' @return BOOL Whether patient VF analysis resulted in a positive result.
+#' @export
+checkUkgtsCriteria = function(pat_id)
+{
+  #import data points
+  df.VF_TD = data.frame(t(df.all_data[VF_V_OFST+pat_id, TD_H_OFST:(TD_H_OFST+VF_H_SIZE-1)]))
+  df.VF_TDp = data.frame(t(df.all_data[VF_V_OFST+pat_id, TDP_H_OFST:(TDP_H_OFST+VF_H_SIZE-1)]))
+
+  # check cluster of 2 points
+  for(pt1 in 1:VF_H_SIZE)
+  {
+    if(!(is.na(df.VF_TDp[pt1,1])))
+    {
+      if((df.VF_TDp[pt1,1] <= 1))
+      {
+        print(paste0("pt1=", pt1))
+
+        for(n1 in 4:11)
+        {
+          pt2 = df.pt_mapping[pt1,n1]
+
+          if(!(is.na(df.VF_TDp[pt2,1])))
+          {
+            if(df.VF_TDp[pt2,1] <= 1)
+            {
+              print(paste0("pt2=", pt2))
+
+              return(TRUE)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  # check cluster of 3 points
+  for(pt1 in 1:VF_H_SIZE)
+  {
+    if(!(is.na(df.VF_TDp[pt1,1])))
+    {
+      if((df.VF_TDp[pt1,1] <= 5))
+      {
+        print(paste0("pt1=", pt1))
+
+        for(n1 in 4:11)
+        {
+          pt2 = df.pt_mapping[pt1,n1]
+
+          if(!(is.na(df.VF_TDp[pt2,1])))
+          {
+            if(df.VF_TDp[pt2,1] <= 5)
+            {
+              print(paste0("pt2=", pt2))
+
+              for(n2 in 4:11)
+              {
+                pt3 = df.pt_mapping[pt2,n2]
+
+                if(!(is.na(df.VF_TDp[pt3,1])))
+                {
+                  if(df.VF_TDp[pt3,1] <= 5)
+                  {
+                    if(pt1 != pt3)
+                    {
+                      print(paste0("pt3=", pt3))
+                      return(TRUE)
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  # check reflection points
+  for(pt1 in 1:(VF_H_SIZE/2))
+  {
+    pt1_r = df.pt_mapping[pt1,12]
+
+    if((!(is.na(df.VF_TD[pt1,1]))) && (!(is.na(df.VF_TD[pt1_r,1]))))
+    {
+      if(abs(df.VF_TD[pt1,1] - df.VF_TD[pt1_r,1]) >= 10)
+      {
+        print(paste0("pt1=", pt1, " pt1_r=", pt1_r))
+
+        for(n1 in 4:11)
+        {
+          pt2 = df.pt_mapping[pt1,n1]
+          pt2_r = df.pt_mapping[pt2,12]
+
+          if((!(is.na(df.VF_TD[pt2,1]))) && (!(is.na(df.VF_TD[pt2_r,1]))))
+          {
+            if(abs(df.VF_TD[pt2,1] - df.VF_TD[pt2_r,1]) >= 10)
+            {
+              if((pt1 != pt2) && (pt1_r != pt2))
+              {
+                print(paste0("pt2=", pt2, " pt2_r=", pt2_r))
+                return(TRUE)
+              }
+
+            }
+          }
+        }
+      }
+    }
+  }
+  return(FALSE)
+}
+
+#' GHT criteria (GHT)
+#'
+#' Glaucoma Hemifield Test (GHT) “outside normal limits”
+#' @param pat_id Patient position in the list on the excel spreadsheet
+#' @return BOOL Whether patient VF analysis resulted in a positive result.
+#' @export
+checkGhtCriteria = function(pat_id)
+{
+  ght = df.all_data[VF_V_OFST+pat_id,GHT_H_OFST]
+  if(ght == "Outside normal limits")
+    return(TRUE)
+
+  return(FALSE)
+}

@@ -1,0 +1,11 @@
+Package: VFEval
+Type: Package
+Title: Visual Field Analysis
+Version: 0.1.0
+Author: Herman Stubeda
+Maintainer: Herman Stubeda <herman.stubeda@dal.ca>
+Description: Evaluation of visual field maps using a variety of computational algorithms.
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.1.1
