@@ -106,15 +106,21 @@ pkgInit = function(data_format = 2)
     assign("df.gcl_data", read.csv(excel.file), envir = .GlobalEnv)
 
     #format GCL data - assumed it is ordered
-    df.gcl = data.frame(matrix(NA, nrow = 0, ncol = 10))
+    df.gcl = data.frame(matrix(NA, nrow = 0, ncol = 11))
     for(pat in seq(1,nrow(df.gcl_data),7)){
-      df.gcl = rbind(df.gcl, c(df.gcl_data[pat,"StudyID"], as.integer(as.POSIXct(df.gcl_data[pat,"ExamDate"])), df.gcl_data[pat,"Quality"],
+      df.gcl = rbind(df.gcl, c(df.gcl_data[pat,"StudyID"], df.gcl_data[pat,"Eye"],
+                               as.integer(as.POSIXct(df.gcl_data[pat,"ExamDate"])), df.gcl_data[pat,"Quality"],
                                df.gcl_data[pat,"abnormalSector"], df.gcl_data[(pat + 4),"abnormalSector"],
                                df.gcl_data[(pat + 6),"abnormalSector"], df.gcl_data[(pat + 3),"abnormalSector"],
                                df.gcl_data[(pat + 1),"abnormalSector"], df.gcl_data[(pat + 5),"abnormalSector"],
                                df.gcl_data[(pat + 2),"abnormalSector"]))
+
     }
-    colnames(df.gcl) = c("StudyID", "ExamDate", "Quality",
+    #for(pat in 1:nrow(df.gcl)){
+    #  if(df.gcl[pat,"Eye"] == 1) df.gcl[pat,"Eye"] = "L"
+    #  else df.gcl[pat,"Eye"] = "R"
+    #}
+    colnames(df.gcl) = c("StudyID", "Eye", "ExamDate", "Quality",
                          "GCL.ABN.Global", "GCL.ABN.Sup", "GCL.ABN.TS", "GCL.ABN.NS",
                          "GCL.ABN.Inf", "GCL.ABN.NI", "GCL.ABN.TI")
     assign("df.gcl_data", df.gcl, envir = .GlobalEnv)
@@ -305,6 +311,8 @@ printIntersectionBarGraph = function(df.results = df.best_match)
 #' @export
 printClusteredHist = function(df.results = df.best_match, x_var = "os", percentage.weight = FALSE)
 {
+  df.results = df.best_match
+
   if(x_var == "os"){
     # create data frame to house graph variables
     df.results_os_cluster = data.frame("OCT.Score"=1:4, "FOST"=1:4, "MHPA"=1:4, "UKGTS"=1:4, "GHT"=1:4, "NUM"=1:4)
@@ -318,7 +326,7 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
 
     for(pat in 1:nrow(df.results)){
       os = df.results[pat,"OCT.Score"]
-      #print(os)
+      print(pat)
 
       if(os == 0){
         row = 4
@@ -547,12 +555,13 @@ createPdf = function(first_pat = 1, last_pat = NUM_PAT)
 #' @export
 assignVfCriteria = function()
 {
-  assign("df.criteria_results", data.frame("Patient.ID"=1:NUM_PAT, "Date.Time"=1:NUM_PAT, "MD"=1:NUM_PAT,
+  assign("df.criteria_results", data.frame("Patient.ID"=1:NUM_PAT, "Eye"=1:NUM_PAT, "Date.Time"=1:NUM_PAT, "MD"=1:NUM_PAT,
                                            "FOST"=1:NUM_PAT, "MHPA"=1:NUM_PAT, "UKGTS"=1:NUM_PAT, "GHT"=1:NUM_PAT),
                                            envir = .GlobalEnv)
   for(pat in 1:NUM_PAT)
   {
-    df.criteria_results[pat,] <<- c(df.vf_data[(pat+VF_V_OFST),1], df.vf_data[(pat+VF_V_OFST),3], df.vf_data[(pat+VF_V_OFST),MD_H_OFST],
+    df.criteria_results[pat,] <<- c(df.vf_data[(pat+VF_V_OFST),1], df.vf_data[(pat+VF_V_OFST),4],
+                                    df.vf_data[(pat+VF_V_OFST),3], df.vf_data[(pat+VF_V_OFST),MD_H_OFST],
                                     checkFostCriteria(pat), checkMhpaCriteria(pat), checkUkgtsCriteria(pat), checkGhtCriteria(pat))
   }
 }
@@ -828,13 +837,14 @@ matchVfToOct = function(window = 4)
 
 
   assign("df.gcl_data", arrange(df.gcl_data, StudyID), envir = .GlobalEnv)
-  assign("df.gcl_data", arrange(df.gcl_data, StudyID), envir = .GlobalEnv)
 
   ls.criteria_results.unique = unique(df.criteria_results[,"Patient.ID"])
 
-  df.best_match = data.frame(matrix(NA, nrow = 0, ncol = 34))
-  colnames(df.best_match) = c("Patient.ID","Date.Vf", "Date.RNFL", "Date.MRW", "Date.GCL",
-                              "Quality.RNFL", "Quality.MRW", "Quality.FCL",
+  df.best_match = data.frame(matrix(NA, nrow = 0, ncol = 38))
+  colnames(df.best_match) = c("Patient.ID",
+                              "Eye.Vf", "Eye.RNFL", "Eye.MRW", "Eye.GCL",
+                              "Date.Vf", "Date.RNFL", "Date.MRW", "Date.GCL",
+                              "Quality.RNFL", "Quality.MRW", "Quality.GCL",
                               "FOST", "MHPA", "UKGTS", "GHT", "MD",
                               "RNFLClass_G", "RNFLClass_T", "RNFLClass_TS", "RNFLClass_TI", "RNFLClass_N", "RNFLClass_NS", "RNFLClass_NI",
                               "MRW.P.Global", "MRW.P.Tmp", "MRW.P.TS", "MRW.P.TI", "MRW.P.Nas", "MRW.P.NS", "MRW.P.NI",
@@ -843,77 +853,105 @@ matchVfToOct = function(window = 4)
   time_bound = 2592000*window
 
   for(vf.v in ls.criteria_results.unique){
-    mtx.rnfl = matrix(integer(), nrow = 0, ncol = 3)
-    colnames(mtx.rnfl) = c("vf.i", "i", "q")
-    mtx.mrw = matrix(integer(), nrow = 0, ncol = 3)
-    colnames(mtx.mrw) = c("vf.i", "i", "q")
-    mtx.gcl = matrix(integer(), nrow = 0, ncol = 3)
-    colnames(mtx.gcl) = c("vf.i", "i", "q")
+    mtx.rnfl = matrix(integer(), nrow = 0, ncol = 4)
+    colnames(mtx.rnfl) = c("vf.i", "i", "eye", "q")
+    mtx.mrw = matrix(integer(), nrow = 0, ncol = 4)
+    colnames(mtx.mrw) = c("vf.i", "i", "eye", "q")
+    mtx.gcl = matrix(integer(), nrow = 0, ncol = 4)
+    colnames(mtx.gcl) = c("vf.i", "i", "eye", "q")
 
     mtx.max = matrix(integer(), nrow = 0, ncol = 7)
-    colnames(mtx.max) = c("vf.i", "rnfl.i", "rnfl.q", "mrw.i", "mrw.q", "gcl.i", "gcl.q")
+    colnames(mtx.max) = c("vf.i", "rnfl.i", "mrw.i", "gcl.i","rnfl.q", "mrw.q", "gcl.q")
 
     for(vf.i in which(df.criteria_results[,"Patient.ID"] == vf.v)){
-      vf.epoch = df.criteria_results[vf.i,"Date.Time"]
+      if(df.criteria_results[vf.i,"Eye"] == "L")
+        vf.eye = 1
+      else
+        vf.eye = 2
+      vf.epoch = as.integer(df.criteria_results[vf.i,"Date.Time"])
       vf.epoch.upper_bound = vf.epoch + time_bound
       vf.epoch.lower_bound = vf.epoch - time_bound
 
       for(rnfl.i in which(df.rnfl_data[,"StudyID"] == vf.v)){
+        rnfl.eye = as.integer(df.rnfl_data[rnfl.i,"Eye"])
         rnfl.epoch = as.integer(as.POSIXct(df.rnfl_data[rnfl.i,"ExamDate"]))
 
-        if(inside.range(rnfl.epoch, c(vf.epoch.lower_bound, vf.epoch.upper_bound))){
-          mtx.rnfl = rbind(mtx.rnfl, c(vf.i, rnfl.i, df.rnfl_data[rnfl.i,"Quality"]))
+        if((rnfl.eye == vf.eye) && inside.range(rnfl.epoch, c(vf.epoch.lower_bound, vf.epoch.upper_bound))){
+          mtx.rnfl = rbind(mtx.rnfl, c(vf.i, rnfl.i, rnfl.eye, df.rnfl_data[rnfl.i,"Quality"]))
         }
       }
 
       for(mrw.i in which(df.mrw_data[,"StudyID"] == vf.v)){
+        mrw.eye = as.integer(df.mrw_data[mrw.i,"Eye"])
         mrw.epoch = as.integer(as.POSIXct(df.mrw_data[mrw.i,"ExamDate"]))
 
-        if(inside.range(mrw.epoch, c(vf.epoch.lower_bound, vf.epoch.upper_bound))){
-          mtx.mrw = rbind(mtx.mrw, c(vf.i, mrw.i, df.mrw_data[mrw.i,"Mean.Quality"]))
+        if((mrw.eye == vf.eye) && inside.range(mrw.epoch, c(vf.epoch.lower_bound, vf.epoch.upper_bound))){
+          mtx.mrw = rbind(mtx.mrw, c(vf.i, mrw.i, mrw.eye, df.mrw_data[mrw.i,"Mean.Quality"]))
         }
       }
 
       for(gcl.i in which(df.gcl_data[,"StudyID"] == vf.v)){
+        gcl.eye = as.integer(df.gcl_data[gcl.i,"Eye"])
         gcl.epoch = df.gcl_data[gcl.i,"ExamDate"]
 
-        if(inside.range(gcl.epoch, c(vf.epoch.lower_bound, vf.epoch.upper_bound))){
-          mtx.gcl = rbind(mtx.gcl, c(vf.i, gcl.i, df.gcl_data[gcl.i,"Quality"]))
+        if((gcl.eye == vf.eye) && inside.range(gcl.epoch, c(vf.epoch.lower_bound, vf.epoch.upper_bound))){
+          mtx.gcl = rbind(mtx.gcl, c(vf.i, gcl.i, gcl.eye, df.gcl_data[gcl.i,"Quality"]))
         }
       }
     }
 
 
     for(vf.i in unique(mtx.rnfl[,"vf.i"])){
-      if((length(which(mtx.mrw[,"vf.i"] == vf.i)) > 0) && (length(which(mtx.gcl[,"vf.i"] == vf.i)) > 0)){
-        rnfl.j = which.max(mtx.rnfl[which(mtx.rnfl[,"vf.i"] == vf.i), "q"])
-        mrw.j  = which.max(mtx.mrw [which(mtx.mrw [,"vf.i"] == vf.i), "q"])
-        gcl.j  = which.max(mtx.gcl [which(mtx.gcl [,"vf.i"] == vf.i), "q"])
+      #if(length(which(mtx.mrw[,"vf.i"] == vf.i)) && length(which(mtx.gcl[,"vf.i"] == vf.i))){
+        rnfl.j = which((mtx.rnfl[,"vf.i"] == vf.i) & (mtx.rnfl[,"eye"] == 1))[which.max(mtx.rnfl[which((mtx.rnfl[,"vf.i"] == vf.i) & (mtx.rnfl[,"eye"] == 1)), "q"])]
+        mrw.j  = which((mtx.mrw [,"vf.i"] == vf.i) & (mtx.mrw [,"eye"] == 1))[which.max(mtx.mrw [which((mtx.mrw [,"vf.i"] == vf.i) & (mtx.mrw [,"eye"] == 1)), "q"])]
+        gcl.j  = which((mtx.gcl [,"vf.i"] == vf.i) & (mtx.gcl [,"eye"] == 1))[which.max(mtx.gcl [which((mtx.gcl [,"vf.i"] == vf.i) & (mtx.gcl [,"eye"] == 1)), "q"])]
 
-        mtx.max = rbind(mtx.max, c(vf.i, mtx.rnfl[rnfl.j,2:3], mtx.mrw[mrw.j,2:3], mtx.gcl[gcl.j,2:3]))
-      }
+        if(length(rnfl.j) && length(mrw.j) && length(gcl.j))
+          mtx.max = rbind(mtx.max, c(vf.i, mtx.rnfl[rnfl.j,"i"], mtx.mrw[mrw.j,"i"], mtx.gcl[gcl.j,"i"],
+                                           mtx.rnfl[rnfl.j,"q"], mtx.mrw[mrw.j,"q"], mtx.gcl[gcl.j,"q"]))
+
+        rnfl.j = which((mtx.rnfl[,"vf.i"] == vf.i) & (mtx.rnfl[,"eye"] == 2))[which.max(mtx.rnfl[which((mtx.rnfl[,"vf.i"] == vf.i) & (mtx.rnfl[,"eye"] == 2)), "q"])]
+        mrw.j  = which((mtx.mrw [,"vf.i"] == vf.i) & (mtx.mrw [,"eye"] == 2))[which.max(mtx.mrw [which((mtx.mrw [,"vf.i"] == vf.i) & (mtx.mrw [,"eye"] == 2)), "q"])]
+        gcl.j  = which((mtx.gcl [,"vf.i"] == vf.i) & (mtx.gcl [,"eye"] == 2))[which.max(mtx.gcl [which((mtx.gcl [,"vf.i"] == vf.i) & (mtx.gcl [,"eye"] == 2)), "q"])]
+
+        if(length(rnfl.j) && length(mrw.j) && length(gcl.j))
+          mtx.max = rbind(mtx.max, c(vf.i, mtx.rnfl[rnfl.j,"i"], mtx.mrw[mrw.j,"i"], mtx.gcl[gcl.j,"i"],
+                                           mtx.rnfl[rnfl.j,"q"], mtx.mrw[mrw.j,"q"], mtx.gcl[gcl.j,"q"]))
+      #}
     }
-    idx = which.max(mtx.max[,"rnfl.q"] + mtx.max[,"mrw.q"] + mtx.max[,"gcl.q"])
+    idx = which.max(as.integer(mtx.max[,"rnfl.q"]) + as.integer(mtx.max[,"mrw.q"]) + as.integer(mtx.max[,"gcl.q"]))
     vf.idx   = mtx.max[idx,"vf.i"]
     rnfl.idx = mtx.max[idx,"rnfl.i"]
     mrw.idx  = mtx.max[idx,"mrw.i"]
     gcl.idx  = mtx.max[idx,"gcl.i"]
 
-    best_match = data.frame(df.criteria_results[vf.idx,"Patient.ID"], as.Date.POSIXct(df.criteria_results[vf.idx,"Date.Time"]),
+    best_match = data.frame(df.criteria_results[vf.idx,"Patient.ID"],
+                            df.criteria_results[vf.idx, "Eye"], df.rnfl_data[rnfl.idx,"Eye"], df.mrw_data[mrw.idx,"Eye"], df.gcl_data[gcl.idx,"Eye"],
+                            as.Date.POSIXct(as.integer(df.criteria_results[vf.idx,"Date.Time"])),
                             df.rnfl_data[rnfl.idx,"ExamDate"], df.mrw_data[mrw.idx,"ExamDate"], as.Date.POSIXct(df.gcl_data[gcl.idx,"ExamDate"]),
                             df.rnfl_data[rnfl.idx,"Quality"], df.mrw_data[mrw.idx,"Mean.Quality"], df.gcl_data[gcl.idx,"Quality"],
-                            df.criteria_results[vf.idx, 4:7], df.criteria_results[vf.idx,"MD"],
+                            df.criteria_results[vf.idx, 5:8], df.criteria_results[vf.idx,"MD"],
                             df.rnfl_data[rnfl.idx, 19:25],
                             df.mrw_data[mrw.idx, 134:140],
                             df.gcl_data[gcl.idx, 4:10])
 
-    colnames(best_match) = c("Patient.ID","Date.Vf", "Date.RNFL", "Date.MRW", "Date.GCL",
+    colnames(best_match) = c("Patient.ID",
+                             "Eye.Vf", "Eye.RNFL", "Eye.MRW", "Eye.GCL",
+                             "Date.Vf", "Date.RNFL", "Date.MRW", "Date.GCL",
                              "Quality.RNFL", "Quality.MRW", "Quality.GCL",
                              "FOST", "MHPA", "UKGTS", "GHT", "MD",
                              "RNFLClass_G", "RNFLClass_T", "RNFLClass_TS", "RNFLClass_TI", "RNFLClass_N", "RNFLClass_NS", "RNFLClass_NI",
                              "MRW.P.Global", "MRW.P.Tmp", "MRW.P.TS", "MRW.P.TI", "MRW.P.Nas", "MRW.P.NS", "MRW.P.NI",
                              "GCL.ABN.Global", "GCL.ABN.Sup", "GCL.ABN.TS", "GCL.ABN.NS", "GCL.ABN.Inf", "GCL.ABN.NI", "GCL.ABN.TI")
     df.best_match = rbind(df.best_match, best_match)
+
+    #if(a == 4){
+    #  a = 0
+    #  break;
+    #}
+    #else
+    #  a = a + 1
   }
 
   assign("df.best_match", df.best_match, envir = .GlobalEnv)
@@ -979,5 +1017,5 @@ scoreOct = function(df.results = df.best_match)
 
     df.oct_scores[pat,"OCT.Score"] = oct.score
   }
-  assign("df.best_match", data.frame(df.results[,1:13], df.oct_scores, df.results[,14:34]), envir = .GlobalEnv)
+  assign("df.best_match", data.frame(df.results[,1:17], df.oct_scores, df.results[,18:38]), envir = .GlobalEnv)
 }
