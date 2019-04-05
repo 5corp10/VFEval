@@ -315,8 +315,8 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
 
   if(x_var == "os"){
     # create data frame to house graph variables
-    df.results_os_cluster = data.frame("OCT.Score"=1:4, "FOST"=1:4, "MHPA"=1:4, "UKGTS"=1:4, "GHT"=1:4, "NUM"=1:4)
-    df.results_os_cluster[,1] = c("6", "4-5", "1-3", "0")
+    df.results_os_cluster = data.frame("OCT.Score"=1:4, "GHT"=1:4,"FOST"=1:4, "MHPA"=1:4, "UKGTS"=1:4,  "NUM"=1:4)
+    df.results_os_cluster[,1] = c("0", "4-5", "1-3","6")
 
     for(row in 1:nrow(df.results_os_cluster)){
       for(col in 2:ncol(df.results_os_cluster)){
@@ -329,20 +329,20 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
       print(pat)
 
       if(os == 0){
-        row = 4
+        row = 1
       }
       else if(inside.range(os, c(1,3))){
-        row = 3
-      }
-      else if(inside.range(os, c(4,5))){
         row = 2
       }
+      else if(inside.range(os, c(4,5))){
+        row = 3
+      }
       else if(os == 6){
-        row = 1
+        row = 4
       }
       df.results_os_cluster[row,6] = df.results_os_cluster[row,6] + 1
 
-      for(col in c("FOST", "UKGTS", "MHPA", "GHT")){
+      for(col in c("GHT", "FOST", "UKGTS", "MHPA")){
         #print(pat)
         if(df.results[pat,col] == T)
           df.results_os_cluster[row,col] = df.results_os_cluster[row,col] + 1
@@ -362,15 +362,17 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
         df.results_os_cluster[row,col] = round(df.results_os_cluster[row,col] / df.results_os_cluster[row,6], digits=2)
       }
     }
-    melted = melt(df.results_os_cluster[,1:5], variable.name = "criterion", value.name = "fraction")
-    plot.hist = ggplot(melted, aes(OCT.Score, fraction)) +
-      geom_bar(aes(fill = criterion, group = criterion), position = "dodge", stat = "identity") +
-      geom_text(aes(label = fraction, group = criterion), size=4, hjust=0.5, vjust=-0.5, position=position_dodge(width = 1))
+    melted = melt(df.results_os_cluster[,1:5], variable.name = "criterion", value.name = "Hit.Rate")
+    plot.hist = ggplot(melted, aes(OCT.Score, Hit.Rate)) +
+      geom_histogram(aes(fill = criterion, group = criterion), position = "dodge", stat = "identity") +
+      geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=-0.5, position=position_dodge(width = 1)) +
+      theme_bw(base_size = 22) +
+      theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
   }
   else if(x_var == "md"){
     # create data frame to house graph variables
-    df.results_md_cluster = data.frame("MD"=1:6, "FOST"=1:6, "MHPA"=1:6, "UKGTS"=1:6, "GHT"=1:6, "NUM"=1:6)
-    df.results_md_cluster[,1] = c("<0.5%", "<1%", "<2%", "<5%", "<10%", ">10%")
+    df.results_md_cluster = data.frame("MD"=1:6, "GHT"=1:6, "FOST"=1:6, "MHPA"=1:6, "UKGTS"=1:6,  "NUM"=1:6)
+    df.results_md_cluster[,1] = c(">10%", "<10%", "<5%", "<2%", "<1%", "<0.5%")
 
     for(row in 1:nrow(df.results_md_cluster)){
       for(col in 2:ncol(df.results_md_cluster)){
@@ -383,26 +385,26 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
       #print(md)
 
       if(is.na(md)){
-        row = 6
-      }
-      else if(md == 0.005){
         row = 1
       }
+      else if(md == 0.005){
+        row = 6
+      }
       else if(md == 0.01){
-        row = 2
+        row = 5
       }
       else if(md == 0.02){
-        row = 3
-      }
-      else if(md == 0.05){
         row = 4
       }
+      else if(md == 0.05){
+        row = 3
+      }
       else if(md == 0.1){
-        row = 5
+        row = 2
       }
       df.results_md_cluster[row,6] = df.results_md_cluster[row,6] + 1
 
-      for(col in c("FOST", "UKGTS", "MHPA", "GHT")){
+      for(col in c("GHT", "FOST", "UKGTS", "MHPA")){
         #print(pat)
         if(df.results[pat,col] == T)
           df.results_md_cluster[row,col] = df.results_md_cluster[row,col] + 1
@@ -423,10 +425,12 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
         df.results_md_cluster[row,col] = round(df.results_md_cluster[row,col] / df.results_md_cluster[row,6], digits=2)
       }
     }
-    melted = melt(df.results_md_cluster[,1:5], variable.name = "criterion", value.name = "fraction")
-    plot.hist = ggplot(melted, aes(MD, fraction)) +
-      geom_bar(aes(fill = criterion, group = criterion), position = "dodge", stat = "identity") +
-      geom_text(aes(label = fraction, group = criterion), size=4, hjust=0.5, vjust=-0.5, position=position_dodge(width = 1))
+    melted = melt(df.results_md_cluster[,1:5], variable.name = "criterion", value.name = "Hit.Rate")
+    plot.hist = ggplot(melted, aes(MD, Hit.Rate)) +
+      geom_histogram(aes(fill = criterion, group = criterion), position = "dodge", stat = "identity") +
+      geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=-0.5, position=position_dodge(width = 1)) +
+      theme_bw(base_size = 22) +
+      theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
   }
 
   return(plot.hist)
@@ -828,6 +832,7 @@ checkGhtCriteria = function(pat_id)
 #'
 #' Matches VF criteria results to OCT data
 #' @param window Maximum number of months time difference between VF and OCT exams
+#' @return none
 #' @export
 matchVfToOct = function(window = 4)
 {
@@ -961,6 +966,7 @@ matchVfToOct = function(window = 4)
 #'
 #' Assigns OCT score to patient based on RNFLT, MRW, and GCLT
 #' @param df.results formatted results to be used
+#' @return none
 #' @export
 scoreOct = function(df.results = df.best_match)
 {
