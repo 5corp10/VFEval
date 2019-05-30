@@ -28,6 +28,7 @@ pkgInit = function(data_format = 2)
   library("reshape2")
   library("scales")
   library("spatstat.utils")
+  library("binom")
 
   if(data_format == 1){
     # specify excel file
@@ -357,7 +358,7 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
     assign("df.results_os_cluster", df.results_os_cluster, envir = .GlobalEnv)
 
     # confidence intervals
-    CIs = binom.confint(x=df.results_os_cluster[1:4,2:5], n=df.results_os_cluster[,6], methods="wilson")
+    CIs = binom.confint(x=df.results_os_cluster[,2:5], n=df.results_os_cluster[,6], methods="wilson")
 
     # modify name of each bin
     for(row in 1:nrow(df.results_os_cluster)){
@@ -365,22 +366,27 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
     }
 
     # generate data frame to be graphed
-    df.results_graph = cbind(df.results_os_cluster[,"OCT.Score"], CIs[,7:18])
-    df.results_graph = within(df.results_os_cluster,  OCT.Score <- factor(OCT.Score, levels=OCT.Score))
+    df.results_graph = cbind(OCT.Score=df.results_os_cluster[,1], CIs[,7:18])
+    colnames(df.results_graph)[2:5] = c("GHT", "FOST", "MHPA", "UKGTS")
+    df.results_graph = within(df.results_graph,  OCT.Score <- factor(OCT.Score, levels=OCT.Score))
     print(df.results_graph)
-    #for(row in 1:nrow(df.results_os_cluster)){
-    #  for(col in 2:6){
-    #    df.results_os_cluster[row,col] = round(df.results_os_cluster[row,col] / df.results_os_cluster[row,6], digits=2)
-    #  }
-    #}
 
-    melted = melt(df.results_graph[,1:5], variable.name = "criterion", value.name = "Hit.Rate")
-    plot.hist = ggplot(melted, aes(OCT.Score, Hit.Rate)) +
-      geom_histogram(aes(fill = criterion, group = criterion), position = "dodge", stat = "identity") +
-      geom_errorbar(position="dodge", width=.25, aes(ymin="lower.GHT", ymax="upper.GHT")) +
-      geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=-0.5, position=position_dodge(width = 1)) +
+    # melt
+    df.melted = melt(df.results_graph[,1:5], variable.name = "criterion", value.name = "Hit.Rate")
+    # round hit rates to 2 sig figs
+    df.melted[,"Hit.Rate"] = round(df.melted[,"Hit.Rate"], digits=2)
+    # add CI columns
+    df.melted = cbind(df.melted,
+                      lower.CI=c(df.results_graph[,"lower.GHT"], df.results_graph[,"lower.FOST"], df.results_graph[,"lower.MHPA"], df.results_graph[,"lower.UKGTS"]),
+                      upper.CI=c(df.results_graph[,"upper.GHT"], df.results_graph[,"upper.FOST"], df.results_graph[,"upper.MHPA"], df.results_graph[,"upper.UKGTS"]))
+    print(df.melted)
+    plot.hist = ggplot(df.melted, aes(x=OCT.Score, y=Hit.Rate, fill=criterion)) +
+      geom_bar(position = position_dodge(), stat = "identity") +
+      geom_errorbar(position=position_dodge(0.9), width=.5, aes(ymin=lower.CI, ymax=upper.CI)) +
+      geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=5, position=position_dodge(0.9)) +
       theme_bw(base_size = 22) +
       theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
   }
   else if(x_var == "md"){
     # create data frame to house graph variables
@@ -426,22 +432,34 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
     }
     assign("df.results_md_cluster", df.results_md_cluster, envir = .GlobalEnv)
 
+    # confidence intervals
+    CIs = rbind(binom.confint(x=df.results_md_cluster[1:4,2:5], n=df.results_md_cluster[1:4,6], methods="wilson"),
+                binom.confint(x=df.results_md_cluster[3:6,2:5], n=df.results_md_cluster[3:6,6], methods="wilson")[3:4,])
+
+    # modify name of each bin
     for(row in 1:nrow(df.results_md_cluster)){
       df.results_md_cluster[row,1] = paste0(df.results_md_cluster[row,1], "\nN=", df.results_md_cluster[row,6])
     }
 
+    # generate data frame to be graphed
+    df.results_graph = cbind(MD=df.results_md_cluster[,1], CIs[,7:18])
+    colnames(df.results_graph)[2:5] = c("GHT", "FOST", "MHPA", "UKGTS")
+    df.results_graph = within(df.results_graph,  MD <- factor(MD, levels=MD))
+    print(df.results_graph)
 
-    df.results_md_cluster = within(df.results_md_cluster,  MD <- factor(MD, levels=MD))
-
-    for(row in 1:6){
-      for(col in 2:6){
-        df.results_md_cluster[row,col] = round(df.results_md_cluster[row,col] / df.results_md_cluster[row,6], digits=2)
-      }
-    }
-    melted = melt(df.results_md_cluster[,1:5], variable.name = "criterion", value.name = "Hit.Rate")
-    plot.hist = ggplot(melted, aes(MD, Hit.Rate)) +
-      geom_histogram(aes(fill = criterion, group = criterion), position = "dodge", stat = "identity") +
-      geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=-0.5, position=position_dodge(width = 1)) +
+    # melt
+    df.melted = melt(df.results_graph[,1:5], variable.name = "criterion", value.name = "Hit.Rate")
+    # round hit rates to 2 sig figs
+    df.melted[,"Hit.Rate"] = round(df.melted[,"Hit.Rate"], digits=2)
+    # add CI columns
+    df.melted = cbind(df.melted,
+                      lower.CI=c(df.results_graph[,"lower.GHT"], df.results_graph[,"lower.FOST"], df.results_graph[,"lower.MHPA"], df.results_graph[,"lower.UKGTS"]),
+                      upper.CI=c(df.results_graph[,"upper.GHT"], df.results_graph[,"upper.FOST"], df.results_graph[,"upper.MHPA"], df.results_graph[,"upper.UKGTS"]))
+    print(df.melted)
+    plot.hist = ggplot(df.melted, aes(x=MD, y=Hit.Rate, fill=criterion)) +
+      geom_bar(position = position_dodge(), stat = "identity") +
+      geom_errorbar(position=position_dodge(0.9), width=.5, aes(ymin=lower.CI, ymax=upper.CI)) +
+      geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=5, position=position_dodge(0.9)) +
       theme_bw(base_size = 22) +
       theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
   }
