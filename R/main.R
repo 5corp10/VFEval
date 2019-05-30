@@ -318,15 +318,17 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
     df.results_os_cluster = data.frame("OCT.Score"=1:4, "GHT"=1:4,"FOST"=1:4, "MHPA"=1:4, "UKGTS"=1:4,  "NUM"=1:4)
     df.results_os_cluster[,1] = c("0", "4-5", "1-3","6")
 
+    # set cell values to 0
     for(row in 1:nrow(df.results_os_cluster)){
       for(col in 2:ncol(df.results_os_cluster)){
         df.results_os_cluster[row,col] = 0
       }
     }
 
+    # record counts of OCT scores in the cells
     for(pat in 1:nrow(df.results)){
       os = df.results[pat,"OCT.Score"]
-      print(pat)
+      #print(pat)
 
       if(os == 0){
         row = 1
@@ -340,8 +342,11 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
       else if(os == 6){
         row = 4
       }
-      df.results_os_cluster[row,6] = df.results_os_cluster[row,6] + 1
 
+      # increment count of OCT bin
+      df.results_os_cluster[row,"NUM"] = df.results_os_cluster[row,"NUM"] + 1
+
+      # increment count of OCT-VFcriterion cell
       for(col in c("GHT", "FOST", "UKGTS", "MHPA")){
         #print(pat)
         if(df.results[pat,col] == T)
@@ -351,20 +356,28 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
     }
     assign("df.results_os_cluster", df.results_os_cluster, envir = .GlobalEnv)
 
+    # confidence intervals
+    CIs = binom.confint(x=df.results_os_cluster[1:4,2:5], n=df.results_os_cluster[,6], methods="wilson")
+
+    # modify name of each bin
     for(row in 1:nrow(df.results_os_cluster)){
       df.results_os_cluster[row,1] = paste0(df.results_os_cluster[row,1], "\nN=", df.results_os_cluster[row,6])
     }
 
-    df.results_os_cluster = within(df.results_os_cluster,  OCT.Score <- factor(OCT.Score, levels=OCT.Score))
+    # generate data frame to be graphed
+    df.results_graph = cbind(df.results_os_cluster[,"OCT.Score"], CIs[,"mean.GHT":"upper.UKGTS"])
+    df.results_graph = within(df.results_os_cluster,  OCT.Score <- factor(OCT.Score, levels=OCT.Score))
 
-    for(row in 1:nrow(df.results_os_cluster)){
-      for(col in 2:6){
-        df.results_os_cluster[row,col] = round(df.results_os_cluster[row,col] / df.results_os_cluster[row,6], digits=2)
-      }
-    }
-    melted = melt(df.results_os_cluster[,1:5], variable.name = "criterion", value.name = "Hit.Rate")
+    #for(row in 1:nrow(df.results_os_cluster)){
+    #  for(col in 2:6){
+    #    df.results_os_cluster[row,col] = round(df.results_os_cluster[row,col] / df.results_os_cluster[row,6], digits=2)
+    #  }
+    #}
+
+    melted = melt(df.results_graph[,1:5], variable.name = "criterion", value.name = "Hit.Rate")
     plot.hist = ggplot(melted, aes(OCT.Score, Hit.Rate)) +
       geom_histogram(aes(fill = criterion, group = criterion), position = "dodge", stat = "identity") +
+      geom_errorbar(position="dodge", width=.25, aes(ymin=Time-ci, ymax=Time+ci)) +
       geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=-0.5, position=position_dodge(width = 1)) +
       theme_bw(base_size = 22) +
       theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
