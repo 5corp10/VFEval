@@ -382,6 +382,7 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
     print(df.melted)
     plot.hist = ggplot(df.melted, aes(x=OCT.Score, y=Hit.Rate, fill=criterion)) +
       geom_bar(position = position_dodge(), stat = "identity") +
+      scale_fill_manual("criteria", values = c("GHT" = "#bbbcbe", "FOST" = "#ffffb1", "MHPA" = "#ffb1b1", "UKGTS" = "#b1e6fa")) +
       geom_errorbar(position=position_dodge(0.9), width=.5, aes(ymin=lower.CI, ymax=upper.CI)) +
       geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=5, position=position_dodge(0.9)) +
       theme_bw(base_size = 22) +
@@ -458,6 +459,7 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
     print(df.melted)
     plot.hist = ggplot(df.melted, aes(x=MD, y=Hit.Rate, fill=criterion)) +
       geom_bar(position = position_dodge(), stat = "identity") +
+      scale_fill_manual("criteria", values = c("GHT" = "#bbbcbe", "FOST" = "#ffffb1", "MHPA" = "#ffb1b1", "UKGTS" = "#b1e6fa")) +
       geom_errorbar(position=position_dodge(0.9), width=.5, aes(ymin=lower.CI, ymax=upper.CI)) +
       geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=5, position=position_dodge(0.9)) +
       theme_bw(base_size = 22) +
