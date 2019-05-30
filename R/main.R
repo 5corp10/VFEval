@@ -365,9 +365,9 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
     }
 
     # generate data frame to be graphed
-    df.results_graph = cbind(df.results_os_cluster[,"OCT.Score"], CIs[,"mean.GHT":"upper.UKGTS"])
+    df.results_graph = cbind(df.results_os_cluster[,"OCT.Score"], CIs[,7:18])
     df.results_graph = within(df.results_os_cluster,  OCT.Score <- factor(OCT.Score, levels=OCT.Score))
-
+    print(df.results_graph)
     #for(row in 1:nrow(df.results_os_cluster)){
     #  for(col in 2:6){
     #    df.results_os_cluster[row,col] = round(df.results_os_cluster[row,col] / df.results_os_cluster[row,6], digits=2)
@@ -377,7 +377,7 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
     melted = melt(df.results_graph[,1:5], variable.name = "criterion", value.name = "Hit.Rate")
     plot.hist = ggplot(melted, aes(OCT.Score, Hit.Rate)) +
       geom_histogram(aes(fill = criterion, group = criterion), position = "dodge", stat = "identity") +
-      geom_errorbar(position="dodge", width=.25, aes(ymin=Time-ci, ymax=Time+ci)) +
+      geom_errorbar(position="dodge", width=.25, aes(ymin="lower.GHT", ymax="upper.GHT")) +
       geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=-0.5, position=position_dodge(width = 1)) +
       theme_bw(base_size = 22) +
       theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
