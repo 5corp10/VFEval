@@ -340,7 +340,7 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
   if(x_var == "os"){
     # create data frame to house graph variables
     df.results_os_cluster = data.frame("OCT.Score"=1:4, "GHT"=1:4,"FOST"=1:4, "MHPA"=1:4, "UKGTS"=1:4,  "NUM"=1:4)
-    df.results_os_cluster[,1] = c("0", "4-5", "1-3","6")
+    df.results_os_cluster[,1] = c("0", "1-3", "4-5","6")
 
     # set cell values to 0
     for(row in 1:nrow(df.results_os_cluster)){
