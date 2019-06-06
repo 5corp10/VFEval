@@ -29,6 +29,7 @@ pkgInit = function(data_format = 2)
   library("scales")
   library("spatstat.utils")
   library("binom")
+  library("gridGraphics")
 
   if(data_format == 1){
     # specify excel file
@@ -83,6 +84,7 @@ pkgInit = function(data_format = 2)
     assign("PSD_H_OFST", 43, envir = .GlobalEnv)
 
     # specify excel file and import data
+    print("Importing and parsing VF data...")
     excel.file = file.path("../Initial_March_trimmed/VF2016_ID_24-2.xlsx")
     df.Vf_2016 = read_xlsx(excel.file, sheet = 1, range = cell_rows(c(5, NA)), col_names = F)
     excel.file = file.path("../Initial_March_trimmed/VF2017_ID_24-2.xlsx")
@@ -93,12 +95,33 @@ pkgInit = function(data_format = 2)
     # make one large data frame of all Vf data
     assign("df.vf_data", rbind(df.Vf_2016, df.Vf_2017, df.Vf_2018), envir = .GlobalEnv)
 
+    # apply exclusion criteria
+    print("Applying exclusion criteria...")
+    excel.file = file.path("../ExclusionsClean.csv")
+    df.exclusions = read.csv(excel.file)
+    list.excl = vector()
+    for(excl_i in 1:nrow(df.exclusions)){
+      #print(excl_i)
+      for(vf_i in which(df.vf_data[,1] == df.exclusions[excl_i,"StudyID"])){
+        #print(vf_i)
+        eye_excl = df.exclusions[excl_i,"ExcludeEyes"]
+        eye_vf = df.vf_data[vf_i,4]
+        if(((eye_excl == "OD") && (eye_vf == "R")) || ((eye_excl == "OS") && (eye_vf == "L")) || (eye_excl == "OU")){
+          list.excl = c(list.excl,vf_i)
+        }
+      }
+    }
+    df.vf_data = df.vf_data[-list.excl, ]
+
     # read patient number
     assign("NUM_PAT", nrow(df.vf_data) - VF_V_OFST, envir = .GlobalEnv)
 
     #add extra columns at the end because they are not imported since they are blank
     assign("df.vf_data", cbind(df.vf_data, data.frame(matrix(NA, nrow = NUM_PAT, ncol = 5))), envir = .GlobalEnv)
 
+
+    # import rnfl, mrw and gcl data
+    print("Importing rnfl, mrw and gcl data...")
     excel.file = file.path("../Initial_March_trimmed/RNFL_Q15_mm1_D3436.csv")
     assign("df.rnfl_data", read.csv(excel.file), envir = .GlobalEnv)
     excel.file = file.path("../Initial_March_trimmed/MRW_Q15_Disp.csv")
@@ -117,19 +140,19 @@ pkgInit = function(data_format = 2)
                                df.gcl_data[(pat + 2),"abnormalSector"]))
 
     }
-    #for(pat in 1:nrow(df.gcl)){
-    #  if(df.gcl[pat,"Eye"] == 1) df.gcl[pat,"Eye"] = "L"
-    #  else df.gcl[pat,"Eye"] = "R"
-    #}
+
     colnames(df.gcl) = c("StudyID", "Eye", "ExamDate", "Quality",
                          "GCL.ABN.Global", "GCL.ABN.Sup", "GCL.ABN.TS", "GCL.ABN.NS",
                          "GCL.ABN.Inf", "GCL.ABN.NI", "GCL.ABN.TI")
     assign("df.gcl_data", df.gcl, envir = .GlobalEnv)
 
     # import helper tables
+    print("Importing helper tables...")
     excel.file = file.path("helper_tables.xlsx")
     assign("df.coord", data.frame(read_xlsx(excel.file, sheet = 1, col_names = T)), envir = .GlobalEnv)
     assign("df.pt_mapping", data.frame(read_xlsx(excel.file, sheet = 2, col_names = T)), envir = .GlobalEnv)
+
+    print("Init complete.")
   }
 }
 
@@ -384,7 +407,7 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
       geom_bar(position = position_dodge(), stat = "identity") +
       scale_fill_manual("criteria", values = c("GHT" = "#bbbcbe", "FOST" = "#ffffb1", "MHPA" = "#ffb1b1", "UKGTS" = "#b1e6fa")) +
       geom_errorbar(position=position_dodge(0.9), width=.5, aes(ymin=lower.CI, ymax=upper.CI)) +
-      geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=5, position=position_dodge(0.9)) +
+      geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=3, position=position_dodge(0.9)) +
       theme_bw(base_size = 22) +
       theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 
@@ -461,7 +484,7 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
       geom_bar(position = position_dodge(), stat = "identity") +
       scale_fill_manual("criteria", values = c("GHT" = "#bbbcbe", "FOST" = "#ffffb1", "MHPA" = "#ffb1b1", "UKGTS" = "#b1e6fa")) +
       geom_errorbar(position=position_dodge(0.9), width=.5, aes(ymin=lower.CI, ymax=upper.CI)) +
-      geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=5, position=position_dodge(0.9)) +
+      geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=3, position=position_dodge(0.9)) +
       theme_bw(base_size = 22) +
       theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
   }
