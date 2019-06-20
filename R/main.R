@@ -333,7 +333,7 @@ printIntersectionBarGraph = function(df.results = df.best_match)
 #'
 #' Print histogram where criteria (Foster, MHPA, UKGTS, and GHT) results are clustered within their MD percentiles (10, 5, 2, 1, and 0.5 %)
 #' @export
-printClusteredHist = function(df.results = df.best_match, x_var = "os", percentage.weight = FALSE)
+printClusteredHist = function(df.results = df.best_match, x_var = "os")
 {
   df.results = df.best_match
 
@@ -404,18 +404,19 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
                       upper.CI=c(df.results_graph[,"upper.GHT"], df.results_graph[,"upper.FOST"], df.results_graph[,"upper.MHPA"], df.results_graph[,"upper.UKGTS"]))
     print(df.melted)
     plot.hist = ggplot(df.melted, aes(x=OCT.Score, y=Hit.Rate, fill=criterion)) +
-      geom_bar(position = position_dodge(), stat = "identity") +
-      scale_fill_manual("criteria", values = c("GHT" = "#bbbcbe", "FOST" = "#ffffb1", "MHPA" = "#ffb1b1", "UKGTS" = "#b1e6fa")) +
-      geom_errorbar(position=position_dodge(0.9), width=.5, aes(ymin=lower.CI, ymax=upper.CI)) +
-      geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=3, position=position_dodge(0.9)) +
-      theme_bw(base_size = 22) +
-      theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+      geom_point(position = position_dodge(0.5), stat = "identity", aes(fill = criterion), size = 5, shape = 21, colour = "black", size = 5, stroke = 1) +
+      scale_fill_manual(values = c(GHT = "#bbbcbe", FOST = "#ffffb1", MHPA = "#ffb1b1", UKGTS = "#b1e6fa")) +
+      geom_errorbar(position=position_dodge(0.5), width=.4, aes(ymin=lower.CI, ymax=upper.CI)) +
+      #geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=3, position=position_dodge(0.9)) +
+      theme_bw(base_size = 22) #+
+      #theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 
   }
   else if(x_var == "md"){
     # create data frame to house graph variables
-    df.results_md_cluster = data.frame("MD"=1:6, "GHT"=1:6, "FOST"=1:6, "MHPA"=1:6, "UKGTS"=1:6,  "NUM"=1:6)
-    df.results_md_cluster[,1] = c(">10%", "<10%", "<5%", "<2%", "<1%", "<0.5%")
+    df.results_md_cluster = data.frame("MD"=1:4, "GHT"=1:4, "FOST"=1:4, "MHPA"=1:4, "UKGTS"=1:4,  "NUM"=1:4)
+    df.results_md_cluster[,1] = c(">10%", "2%< MD <10%", "0.5%< MD <2%", "<0.5%")
+    md.db_10 = md.db_5 = md.db_1 = md.db_05 = vector()
 
     for(row in 1:nrow(df.results_md_cluster)){
       for(col in 2:ncol(df.results_md_cluster)){
@@ -424,26 +425,32 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
     }
 
     for(pat in 1:nrow(df.results)){
-      md = df.results[pat,"MD"]
+      md = df.results[pat,"MD.pval"]
       #print(md)
 
       if(is.na(md)){
         row = 1
+        md.db_10 = c(md.db_10, df.results[pat,"MD.db"])
       }
       else if(md == 0.005){
-        row = 6
+        row = 4
+        md.db_05 = c(md.db_05, df.results[pat,"MD.db"])
       }
       else if(md == 0.01){
-        row = 5
+        row = 3
+        md.db_1 = c(md.db_1, df.results[pat,"MD.db"])
       }
       else if(md == 0.02){
-        row = 4
+        row = 3
+        md.db_1 = c(md.db_1, df.results[pat,"MD.db"])
       }
       else if(md == 0.05){
-        row = 3
+        row = 2
+        md.db_5 = c(md.db_5, df.results[pat,"MD.db"])
       }
       else if(md == 0.1){
         row = 2
+        md.db_5 = c(md.db_5, df.results[pat,"MD.db"])
       }
       df.results_md_cluster[row,6] = df.results_md_cluster[row,6] + 1
 
@@ -457,12 +464,14 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
     assign("df.results_md_cluster", df.results_md_cluster, envir = .GlobalEnv)
 
     # confidence intervals
-    CIs = rbind(binom.confint(x=df.results_md_cluster[1:4,2:5], n=df.results_md_cluster[1:4,6], methods="wilson"),
-                binom.confint(x=df.results_md_cluster[3:6,2:5], n=df.results_md_cluster[3:6,6], methods="wilson")[3:4,])
+    #CIs = rbind(binom.confint(x=df.results_md_cluster[1:4,2:5], n=df.results_md_cluster[1:4,6], methods="wilson"),
+    #            binom.confint(x=df.results_md_cluster[3:6,2:5], n=df.results_md_cluster[3:6,6], methods="wilson")[3:4,])
+    CIs = binom.confint(x=df.results_md_cluster[,2:5], n=df.results_md_cluster[,6], methods="wilson")
 
     # modify name of each bin
+    md.db = list(md.db_10, md.db_5, md.db_1, md.db_05)
     for(row in 1:nrow(df.results_md_cluster)){
-      df.results_md_cluster[row,1] = paste0(df.results_md_cluster[row,1], "\nN=", df.results_md_cluster[row,6])
+      df.results_md_cluster[row,1] = paste0(df.results_md_cluster[row,1], "\nmed=", median(md.db[[row]]), "\nN=",df.results_md_cluster[row,6])
     }
 
     # generate data frame to be graphed
@@ -481,12 +490,20 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os", percenta
                       upper.CI=c(df.results_graph[,"upper.GHT"], df.results_graph[,"upper.FOST"], df.results_graph[,"upper.MHPA"], df.results_graph[,"upper.UKGTS"]))
     print(df.melted)
     plot.hist = ggplot(df.melted, aes(x=MD, y=Hit.Rate, fill=criterion)) +
-      geom_bar(position = position_dodge(), stat = "identity") +
-      scale_fill_manual("criteria", values = c("GHT" = "#bbbcbe", "FOST" = "#ffffb1", "MHPA" = "#ffb1b1", "UKGTS" = "#b1e6fa")) +
-      geom_errorbar(position=position_dodge(0.9), width=.5, aes(ymin=lower.CI, ymax=upper.CI)) +
-      geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=3, position=position_dodge(0.9)) +
-      theme_bw(base_size = 22) +
-      theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+      geom_point(position = position_dodge(0.5), stat = "identity", aes(fill = criterion), size = 5, shape = 21, colour = "black", size = 5, stroke = 1) +
+      scale_fill_manual(values = c(GHT = "#bbbcbe", FOST = "#ffffb1", MHPA = "#ffb1b1", UKGTS = "#b1e6fa")) +
+      geom_errorbar(position=position_dodge(0.5), width=.4, aes(ymin=lower.CI, ymax=upper.CI)) +
+      #geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=3, position=position_dodge(0.9)) +
+      theme_bw(base_size = 22) #+
+    #theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+    #plot.hist = ggplot(df.melted, aes(x=MD, y=Hit.Rate, fill=criterion)) +
+    #  geom_bar(position = position_dodge(), stat = "identity") +
+    #  scale_fill_manual("criteria", values = c("GHT" = "#bbbcbe", "FOST" = "#ffffb1", "MHPA" = "#ffb1b1", "UKGTS" = "#b1e6fa")) +
+    #  geom_errorbar(position=position_dodge(0.9), width=.5, aes(ymin=lower.CI, ymax=upper.CI)) +
+    #  geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=3, position=position_dodge(0.9)) +
+    #  theme_bw(base_size = 22) +
+    #  theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
   }
 
   return(plot.hist)
@@ -615,13 +632,13 @@ createPdf = function(first_pat = 1, last_pat = NUM_PAT)
 #' @export
 assignVfCriteria = function()
 {
-  assign("df.criteria_results", data.frame("Patient.ID"=1:NUM_PAT, "Eye"=1:NUM_PAT, "Date.Time"=1:NUM_PAT, "MD"=1:NUM_PAT,
+  assign("df.criteria_results", data.frame("Patient.ID"=1:NUM_PAT, "Eye"=1:NUM_PAT, "Date.Time"=1:NUM_PAT, "MD.db"=1:NUM_PAT, "MD.pval"=1:NUM_PAT,
                                            "FOST"=1:NUM_PAT, "MHPA"=1:NUM_PAT, "UKGTS"=1:NUM_PAT, "GHT"=1:NUM_PAT),
                                            envir = .GlobalEnv)
   for(pat in 1:NUM_PAT)
   {
     df.criteria_results[pat,] <<- c(df.vf_data[(pat+VF_V_OFST),1], df.vf_data[(pat+VF_V_OFST),4],
-                                    df.vf_data[(pat+VF_V_OFST),3], df.vf_data[(pat+VF_V_OFST),MD_H_OFST],
+                                    df.vf_data[(pat+VF_V_OFST),3], df.vf_data[(pat+VF_V_OFST),MD_H_OFST-1], df.vf_data[(pat+VF_V_OFST),MD_H_OFST],
                                     checkFostCriteria(pat), checkMhpaCriteria(pat), checkUkgtsCriteria(pat), checkGhtCriteria(pat))
   }
 }
@@ -901,12 +918,12 @@ matchVfToOct = function(window = 4)
 
   ls.criteria_results.unique = unique(df.criteria_results[,"Patient.ID"])
 
-  df.best_match = data.frame(matrix(NA, nrow = 0, ncol = 38))
+  df.best_match = data.frame(matrix(NA, nrow = 0, ncol = 39))
   colnames(df.best_match) = c("Patient.ID",
                               "Eye.Vf", "Eye.RNFL", "Eye.MRW", "Eye.GCL",
                               "Date.Vf", "Date.RNFL", "Date.MRW", "Date.GCL",
                               "Quality.RNFL", "Quality.MRW", "Quality.GCL",
-                              "FOST", "MHPA", "UKGTS", "GHT", "MD",
+                              "FOST", "MHPA", "UKGTS", "GHT", "MD.db", "MD.pval",
                               "RNFLClass_G", "RNFLClass_T", "RNFLClass_TS", "RNFLClass_TI", "RNFLClass_N", "RNFLClass_NS", "RNFLClass_NI",
                               "MRW.P.Global", "MRW.P.Tmp", "MRW.P.TS", "MRW.P.TI", "MRW.P.Nas", "MRW.P.NS", "MRW.P.NI",
                               "GCL.ABN.Global", "GCL.ABN.Sup", "GCL.ABN.TS", "GCL.ABN.NS", "GCL.ABN.Inf", "GCL.ABN.NI", "GCL.ABN.TI")
@@ -992,7 +1009,7 @@ matchVfToOct = function(window = 4)
                             as.Date.POSIXct(as.integer(df.criteria_results[vf.idx,"Date.Time"])),
                             df.rnfl_data[rnfl.idx,"ExamDate"], df.mrw_data[mrw.idx,"ExamDate"], as.Date.POSIXct(df.gcl_data[gcl.idx,"ExamDate"]),
                             df.rnfl_data[rnfl.idx,"Quality"], df.mrw_data[mrw.idx,"Mean.Quality"], df.gcl_data[gcl.idx,"Quality"],
-                            df.criteria_results[vf.idx, 5:8], df.criteria_results[vf.idx,"MD"],
+                            df.criteria_results[vf.idx, 6:9], df.criteria_results[vf.idx,"MD.db"], df.criteria_results[vf.idx,"MD.pval"],
                             df.rnfl_data[rnfl.idx, 19:25],
                             df.mrw_data[mrw.idx, 134:140],
                             df.gcl_data[gcl.idx, 4:10])
@@ -1001,7 +1018,7 @@ matchVfToOct = function(window = 4)
                              "Eye.Vf", "Eye.RNFL", "Eye.MRW", "Eye.GCL",
                              "Date.Vf", "Date.RNFL", "Date.MRW", "Date.GCL",
                              "Quality.RNFL", "Quality.MRW", "Quality.GCL",
-                             "FOST", "MHPA", "UKGTS", "GHT", "MD",
+                             "FOST", "MHPA", "UKGTS", "GHT", "MD.db", "MD.pval",
                              "RNFLClass_G", "RNFLClass_T", "RNFLClass_TS", "RNFLClass_TI", "RNFLClass_N", "RNFLClass_NS", "RNFLClass_NI",
                              "MRW.P.Global", "MRW.P.Tmp", "MRW.P.TS", "MRW.P.TI", "MRW.P.Nas", "MRW.P.NS", "MRW.P.NI",
                              "GCL.ABN.Global", "GCL.ABN.Sup", "GCL.ABN.TS", "GCL.ABN.NS", "GCL.ABN.Inf", "GCL.ABN.NI", "GCL.ABN.TI")
@@ -1079,5 +1096,5 @@ scoreOct = function(df.results = df.best_match)
 
     df.oct_scores[pat,"OCT.Score"] = oct.score
   }
-  assign("df.best_match", data.frame(df.results[,1:17], df.oct_scores, df.results[,18:38]), envir = .GlobalEnv)
+  assign("df.best_match", data.frame(df.results[,1:18], df.oct_scores, df.results[,19:39]), envir = .GlobalEnv)
 }
