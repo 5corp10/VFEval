@@ -415,8 +415,8 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
   else if(x_var == "md"){
     # create data frame to house graph variables
     df.results_md_cluster = data.frame("MD"=1:4, "GHT"=1:4, "FOST"=1:4, "MHPA"=1:4, "UKGTS"=1:4,  "NUM"=1:4)
-    df.results_md_cluster[,1] = c(">10%", "2%< MD <10%", "0.5%< MD <2%", "<0.5%")
-    md.db_10 = md.db_5 = md.db_1 = md.db_05 = vector()
+    df.results_md_cluster[,1] = c(">10%", "2-10%", "0.5-2%", "<0.5%")
+    md.db_10 = md.db_5 = md.db_1 = md.db_05 = double()
 
     for(row in 1:nrow(df.results_md_cluster)){
       for(col in 2:ncol(df.results_md_cluster)){
@@ -430,27 +430,27 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
 
       if(is.na(md)){
         row = 1
-        md.db_10 = c(md.db_10, df.results[pat,"MD.db"])
+        md.db_10 = c(md.db_10, round(as.double(as.character(df.results[pat,"MD.db"])), 2))
       }
       else if(md == 0.005){
         row = 4
-        md.db_05 = c(md.db_05, df.results[pat,"MD.db"])
+        md.db_05 = c(md.db_05, round(as.double(as.character(df.results[pat,"MD.db"])), 2))
       }
       else if(md == 0.01){
         row = 3
-        md.db_1 = c(md.db_1, df.results[pat,"MD.db"])
+        md.db_1 = c(md.db_1, round(as.double(as.character(df.results[pat,"MD.db"])), 2))
       }
       else if(md == 0.02){
         row = 3
-        md.db_1 = c(md.db_1, df.results[pat,"MD.db"])
+        md.db_1 = c(md.db_1, round(as.double(as.character(df.results[pat,"MD.db"])), 2))
       }
       else if(md == 0.05){
         row = 2
-        md.db_5 = c(md.db_5, df.results[pat,"MD.db"])
+        md.db_5 = c(md.db_5, round(as.double(as.character(df.results[pat,"MD.db"])), 2))
       }
       else if(md == 0.1){
         row = 2
-        md.db_5 = c(md.db_5, df.results[pat,"MD.db"])
+        md.db_5 = c(md.db_5, round(as.double(as.character(df.results[pat,"MD.db"])), 2))
       }
       df.results_md_cluster[row,6] = df.results_md_cluster[row,6] + 1
 
@@ -471,7 +471,7 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
     # modify name of each bin
     md.db = list(md.db_10, md.db_5, md.db_1, md.db_05)
     for(row in 1:nrow(df.results_md_cluster)){
-      df.results_md_cluster[row,1] = paste0(df.results_md_cluster[row,1], "\nmed=", median(md.db[[row]]), "\nN=",df.results_md_cluster[row,6])
+      df.results_md_cluster[row,1] = paste0(df.results_md_cluster[row,1], "\nmed=", median(md.db[[row]]), "dB", "\nN=",df.results_md_cluster[row,6])
     }
 
     # generate data frame to be graphed
@@ -1097,4 +1097,45 @@ scoreOct = function(df.results = df.best_match)
     df.oct_scores[pat,"OCT.Score"] = oct.score
   }
   assign("df.best_match", data.frame(df.results[,1:18], df.oct_scores, df.results[,19:39]), envir = .GlobalEnv)
+}
+
+#' OCT Score
+#'
+#' Assigns OCT score to patient based on RNFLT, MRW, and GCLT
+#' @param df.results formatted results to be used
+#' @return none
+#' @export
+checkCriteriaConsistency = function(df.results = df.best_match)
+{
+  df.criteria_consistency = data.frame(matrix(0, nrow=5, ncol=5))
+  colnames(df.criteria_consistency) = c("GHT", "FOST", "MHPA", "UKGTS", "Total")
+  df.criteria_consistency = data.frame("MD"=c(">10%", "2-10%", "0.5-2%", "<0.5%", "Total"), df.criteria_consistency)
+
+  for(pat.i in nrow(df.best_match)){
+    id = df.best_match[,"Patient.ID"]
+    date1 = df.best_match[,"Date.Vf"]
+
+    for(pat.j in which(df.criteria_results[,1] == id)){
+      date2 = as.Date.POSIXct(df.vf_data[pat.j,3])
+      if(date2 > date1){
+        if((df.best_match[pat.i,"GHT"] == T) && (df.criteria_results[pat.i,"GHT"] == F)){
+          df.criteria_consistency[5,"GHT"] = df.criteria_consistency[5,"GHT"] + 1
+        }
+        else if((df.best_match[pat.i,"FOST"] == T) && (df.criteria_results[pat.i,"FOST"] == F)){
+          df.criteria_consistency[5,"FOST"] = df.criteria_consistency[5,"FOST"] + 1
+        }
+        else if((df.best_match[pat.i,"MHPA"] == T) && (df.criteria_results[pat.i,"MHPA"] == F)){
+          df.criteria_consistency[5,"MHPA"] = df.criteria_consistency[5,"MHPA"] + 1
+        }
+        else if((df.best_match[pat.i,"UKGTS"] == T) && (df.criteria_results[pat.i,"UKGTS"] == F)){
+          df.criteria_consistency[5,"UKGTS"] = df.criteria_consistency[5,"UKGTS"] + 1
+        }
+
+        df.criteria_consistency[5,"Total"] = df.criteria_consistency[5,"Total"] + 1
+        #break;
+      }
+    }
+  }
+
+  print(df.criteria_consistency)
 }
