@@ -1105,34 +1105,70 @@ scoreOct = function(df.results = df.best_match)
 #' @param df.results formatted results to be used
 #' @return none
 #' @export
-checkCriteriaConsistency = function(df.results = df.best_match)
+checkCriteriaConsistency = function()
 {
-  df.criteria_consistency = data.frame(matrix(0, nrow=5, ncol=5))
-  colnames(df.criteria_consistency) = c("GHT", "FOST", "MHPA", "UKGTS", "Total")
-  df.criteria_consistency = data.frame("MD"=c(">10%", "2-10%", "0.5-2%", "<0.5%", "Total"), df.criteria_consistency)
+  df.criteria_consistency = data.frame(matrix(0, nrow=2, ncol=4))
+  colnames(df.criteria_consistency) = c("GHT", "FOST", "MHPA", "UKGTS")
+  rownames(df.criteria_consistency) = c("Reversals", "Total unique VF pairs")
+  #df.criteria_consistency = data.frame("MD"=c(">10%", "2-10%", "0.5-2%", "<0.5%", "Total"), df.criteria_consistency)
 
-  for(pat.i in nrow(df.best_match)){
-    id = df.best_match[,"Patient.ID"]
-    date1 = df.best_match[,"Date.Vf"]
+  for(pat.i in 1:nrow(df.best_match)){
+    id = df.best_match[pat.i,"Patient.ID"]
+    date1 = df.best_match[pat.i,"Date.Vf"]
 
-    for(pat.j in which(df.criteria_results[,1] == id)){
-      date2 = as.Date.POSIXct(df.vf_data[pat.j,3])
+    for(pat.j in which(as.integer(df.criteria_results[,"Patient.ID"]) == id)){
+      date2 = as.Date.POSIXct(as.double(df.criteria_results[pat.j,"Date.Time"]))
+
       if(date2 > date1){
-        if((df.best_match[pat.i,"GHT"] == T) && (df.criteria_results[pat.i,"GHT"] == F)){
-          df.criteria_consistency[5,"GHT"] = df.criteria_consistency[5,"GHT"] + 1
+        if(df.best_match[pat.i,"GHT"] == T){
+          df.criteria_consistency["Total unique VF pairs","GHT"] = df.criteria_consistency["Total unique VF pairs","GHT"] + 1
+          if(df.criteria_results[pat.j,"GHT"] == F){
+            df.criteria_consistency["Reversals","GHT"] = df.criteria_consistency["Reversals","GHT"] + 1
+            break
+          }
         }
-        else if((df.best_match[pat.i,"FOST"] == T) && (df.criteria_results[pat.i,"FOST"] == F)){
-          df.criteria_consistency[5,"FOST"] = df.criteria_consistency[5,"FOST"] + 1
-        }
-        else if((df.best_match[pat.i,"MHPA"] == T) && (df.criteria_results[pat.i,"MHPA"] == F)){
-          df.criteria_consistency[5,"MHPA"] = df.criteria_consistency[5,"MHPA"] + 1
-        }
-        else if((df.best_match[pat.i,"UKGTS"] == T) && (df.criteria_results[pat.i,"UKGTS"] == F)){
-          df.criteria_consistency[5,"UKGTS"] = df.criteria_consistency[5,"UKGTS"] + 1
-        }
+      }
+    }
 
-        df.criteria_consistency[5,"Total"] = df.criteria_consistency[5,"Total"] + 1
-        #break;
+    for(pat.j in which(as.integer(df.criteria_results[,"Patient.ID"]) == id)){
+      date2 = as.Date.POSIXct(as.double(df.criteria_results[pat.j,"Date.Time"]))
+
+      if(date2 > date1){
+        if(df.best_match[pat.i,"FOST"] == T){
+          df.criteria_consistency["Total unique VF pairs","FOST"] = df.criteria_consistency["Total unique VF pairs","FOST"] + 1
+          if(df.criteria_results[pat.j,"FOST"] == F){
+            df.criteria_consistency["Reversals","FOST"] = df.criteria_consistency["Reversals","FOST"] + 1
+            break
+          }
+        }
+      }
+    }
+
+    for(pat.j in which(as.integer(df.criteria_results[,"Patient.ID"]) == id)){
+      date2 = as.Date.POSIXct(as.double(df.criteria_results[pat.j,"Date.Time"]))
+
+      if(date2 > date1){
+       if(df.best_match[pat.i,"MHPA"] == T){
+          df.criteria_consistency["Total unique VF pairs","MHPA"] = df.criteria_consistency["Total unique VF pairs","MHPA"] + 1
+          if(df.criteria_results[pat.j,"MHPA"] == F){
+            df.criteria_consistency["Reversals","MHPA"] = df.criteria_consistency["Reversals","MHPA"] + 1
+            break
+          }
+       }
+      }
+    }
+
+    for(pat.j in which(as.integer(df.criteria_results[,"Patient.ID"]) == id)){
+      date2 = as.Date.POSIXct(as.double(df.criteria_results[pat.j,"Date.Time"]))
+
+      if(date2 > date1){
+        if(df.best_match[pat.i,"UKGTS"] == T){
+          df.criteria_consistency["Total unique VF pairs","UKGTS"] = df.criteria_consistency["Total unique VF pairs","UKGTS"] + 1
+          if(df.criteria_results[pat.j,"UKGTS"] == F){
+            df.criteria_consistency["Reversals","UKGTS"] = df.criteria_consistency["Reversals","UKGTS"] + 1
+            break
+          }
+        }
       }
     }
   }
