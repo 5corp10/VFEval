@@ -505,6 +505,38 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
     #  theme_bw(base_size = 22) +
     #  theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
   }
+  else if(x_var == "rev"){
+
+    # confidence intervals
+    #CIs = rbind(binom.confint(x=df.results_md_cluster[1:4,2:5], n=df.results_md_cluster[1:4,6], methods="wilson"),
+    #            binom.confint(x=df.results_md_cluster[3:6,2:5], n=df.results_md_cluster[3:6,6], methods="wilson")[3:4,])
+    CIs = binom.confint(x=df.criteria_consistency[1:4,2:5], n=df.criteria_consistency[1:4, "Total"], methods="wilson")
+
+    # modify name of each bin
+    x_names = paste0(df.criteria_consistency[1:4,1], "\nN=", df.criteria_consistency[1:4, "Total"])
+
+    # generate data frame to be graphed
+    df.results_graph = cbind(MD=x_names, CIs[,7:18])
+    colnames(df.results_graph)[2:5] = c("GHT", "FOST", "MHPA", "UKGTS")
+    df.results_graph = within(df.results_graph,  MD <- factor(MD, levels=MD))
+    print(df.results_graph)
+
+    # melt
+    df.melted = melt(df.results_graph[,1:5], variable.name = "criterion", value.name = "Repeat.Error.Rate")
+    # round hit rates to 2 sig figs
+    df.melted[,"Repeat.Error.Rate"] = round(df.melted[,"Repeat.Error.Rate"], digits=2)
+    # add CI columns
+    df.melted = cbind(df.melted,
+                      lower.CI=c(df.results_graph[,"lower.GHT"], df.results_graph[,"lower.FOST"], df.results_graph[,"lower.MHPA"], df.results_graph[,"lower.UKGTS"]),
+                      upper.CI=c(df.results_graph[,"upper.GHT"], df.results_graph[,"upper.FOST"], df.results_graph[,"upper.MHPA"], df.results_graph[,"upper.UKGTS"]))
+    print(df.melted)
+    plot.hist = ggplot(df.melted, aes(x=MD, y=Repeat.Error.Rate, fill=criterion)) +
+      geom_point(position = position_dodge(0.5), stat = "identity", aes(fill = criterion), size = 5, shape = 21, colour = "black", size = 5, stroke = 1) +
+      scale_fill_manual(values = c(GHT = "#bbbcbe", FOST = "#ffffb1", MHPA = "#ffb1b1", UKGTS = "#b1e6fa")) +
+      geom_errorbar(position=position_dodge(0.5), width=.4, aes(ymin=lower.CI, ymax=upper.CI)) +
+      #geom_text(aes(label = Repeat.Error.Rate, group = criterion), size=6, hjust=0.5, vjust=3, position=position_dodge(0.9)) +
+      theme_bw(base_size = 22)
+  }
 
   return(plot.hist)
 }
@@ -1107,10 +1139,10 @@ scoreOct = function(df.results = df.best_match)
 #' @export
 checkCriteriaConsistency = function()
 {
-  df.criteria_consistency = data.frame(matrix(0, nrow=2, ncol=4))
+  df.criteria_consistency = data.frame(matrix(0, nrow=6, ncol=4))
   colnames(df.criteria_consistency) = c("GHT", "FOST", "MHPA", "UKGTS")
-  rownames(df.criteria_consistency) = c("Reversals", "Total unique VF pairs")
-  #df.criteria_consistency = data.frame("MD"=c(">10%", "2-10%", "0.5-2%", "<0.5%", "Total"), df.criteria_consistency)
+  rownames(df.criteria_consistency) = c(">10%", "2-10%", "0.5-2%", "<0.5%", "Reversals", "Total unique VF pairs")
+  df.criteria_consistency = data.frame("MD"=rownames(df.criteria_consistency), df.criteria_consistency)
 
   for(pat.i in 1:nrow(df.best_match)){
     id = df.best_match[pat.i,"Patient.ID"]
@@ -1123,6 +1155,28 @@ checkCriteriaConsistency = function()
         if(df.best_match[pat.i,"GHT"] == T){
           df.criteria_consistency["Total unique VF pairs","GHT"] = df.criteria_consistency["Total unique VF pairs","GHT"] + 1
           if(df.criteria_results[pat.j,"GHT"] == F){
+
+            md = df.best_match[pat.i,"MD.pval"]
+
+            if(is.na(md)){
+              row = ">10%"
+            }
+            else if(md == 0.005){
+              row = "<0.5%"
+            }
+            else if(md == 0.01){
+              row = "0.5-2%"
+            }
+            else if(md == 0.02){
+              row = "0.5-2%"
+            }
+            else if(md == 0.05){
+              row = "2-10%"
+            }
+            else if(md == 0.1){
+              row = "2-10%"
+            }
+            df.criteria_consistency[row,"GHT"] = df.criteria_consistency[row,"GHT"] + 1
             df.criteria_consistency["Reversals","GHT"] = df.criteria_consistency["Reversals","GHT"] + 1
             break
           }
@@ -1137,6 +1191,28 @@ checkCriteriaConsistency = function()
         if(df.best_match[pat.i,"FOST"] == T){
           df.criteria_consistency["Total unique VF pairs","FOST"] = df.criteria_consistency["Total unique VF pairs","FOST"] + 1
           if(df.criteria_results[pat.j,"FOST"] == F){
+
+            md = df.best_match[pat.i,"MD.pval"]
+
+            if(is.na(md)){
+              row = ">10%"
+            }
+            else if(md == 0.005){
+              row = "<0.5%"
+            }
+            else if(md == 0.01){
+              row = "0.5-2%"
+            }
+            else if(md == 0.02){
+              row = "0.5-2%"
+            }
+            else if(md == 0.05){
+              row = "2-10%"
+            }
+            else if(md == 0.1){
+              row = "2-10%"
+            }
+            df.criteria_consistency[row,"FOST"] = df.criteria_consistency[row,"FOST"] + 1
             df.criteria_consistency["Reversals","FOST"] = df.criteria_consistency["Reversals","FOST"] + 1
             break
           }
@@ -1151,6 +1227,28 @@ checkCriteriaConsistency = function()
        if(df.best_match[pat.i,"MHPA"] == T){
           df.criteria_consistency["Total unique VF pairs","MHPA"] = df.criteria_consistency["Total unique VF pairs","MHPA"] + 1
           if(df.criteria_results[pat.j,"MHPA"] == F){
+
+            md = df.best_match[pat.i,"MD.pval"]
+
+            if(is.na(md)){
+              row = ">10%"
+            }
+            else if(md == 0.005){
+              row = "<0.5%"
+            }
+            else if(md == 0.01){
+              row = "0.5-2%"
+            }
+            else if(md == 0.02){
+              row = "0.5-2%"
+            }
+            else if(md == 0.05){
+              row = "2-10%"
+            }
+            else if(md == 0.1){
+              row = "2-10%"
+            }
+            df.criteria_consistency[row,"MHPA"] = df.criteria_consistency[row,"MHPA"] + 1
             df.criteria_consistency["Reversals","MHPA"] = df.criteria_consistency["Reversals","MHPA"] + 1
             break
           }
@@ -1165,6 +1263,28 @@ checkCriteriaConsistency = function()
         if(df.best_match[pat.i,"UKGTS"] == T){
           df.criteria_consistency["Total unique VF pairs","UKGTS"] = df.criteria_consistency["Total unique VF pairs","UKGTS"] + 1
           if(df.criteria_results[pat.j,"UKGTS"] == F){
+
+            md = df.best_match[pat.i,"MD.pval"]
+
+            if(is.na(md)){
+              row = ">10%"
+            }
+            else if(md == 0.005){
+              row = "<0.5%"
+            }
+            else if(md == 0.01){
+              row = "0.5-2%"
+            }
+            else if(md == 0.02){
+              row = "0.5-2%"
+            }
+            else if(md == 0.05){
+              row = "2-10%"
+            }
+            else if(md == 0.1){
+              row = "2-10%"
+            }
+            df.criteria_consistency[row,"UKGTS"] = df.criteria_consistency[row,"UKGTS"] + 1
             df.criteria_consistency["Reversals","UKGTS"] = df.criteria_consistency["Reversals","UKGTS"] + 1
             break
           }
@@ -1172,6 +1292,8 @@ checkCriteriaConsistency = function()
       }
     }
   }
+  df.criteria_consistency = data.frame(df.criteria_consistency, Total=c(sum(df.criteria_consistency[1,2:5]), sum(df.criteria_consistency[2,2:5]), sum(df.criteria_consistency[3,2:5]), sum(df.criteria_consistency[4,2:5]), 0, 0))
 
+  assign("df.criteria_consistency", df.criteria_consistency, envir = .GlobalEnv)
   print(df.criteria_consistency)
 }
