@@ -191,8 +191,10 @@ printVfMap = function(pat_id)
   indices = ggdraw() + draw_text(list1, x = 0.2, y = c(0.9, 0.8, 0.7), size = 12, hjust = 0) + draw_text(list2, x = 0.2, y = c(0.55, 0.45, 0.35, 0.25), size = 12, hjust = 0)
 
   # apply criteria and generate result
-  list3 = c(paste0("Foster: ", checkFostCriteria(pat_id)), paste0("MHPA: ", checkMhpaCriteria(pat_id)), paste0("UKGTS: ", checkUkgtsCriteria(pat_id)), paste0("GHT: ", checkGhtCriteria(pat_id)))
-  results = ggdraw() + draw_text(list3, x = 0.2, y = c(0.8, 0.7, 0.6, 0.5), size = 12, hjust = 0)
+  list3 = c(paste0("GHT: ", checkGhtCriteria(pat_id)), paste0("FOST: ", checkFostCriteria(pat_id)),
+            paste0("MHPA: ", checkMhpaCriteria(pat_id)), paste0("LOGTS: ", checkLogtsCriteria(pat_id)),
+            paste0("UKGTS: ", checkUkgtsCriteria(pat_id)))
+  results = ggdraw() + draw_text(list3, x = 0.2, y = c(0.8, 0.7, 0.6, 0.5, 0.4), size = 12, hjust = 0)
 
   # generate plot of threshold
   df.T = data.frame(df.coord, t(df.vf_data[VF_V_OFST+pat_id, T_H_OFST:(T_H_OFST+VF_H_SIZE-1)]))
@@ -336,18 +338,13 @@ printIntersectionBarGraph = function(df.results = df.best_match)
 printClusteredHist = function(df.results = df.best_match, x_var = "os")
 {
   df.results = df.best_match
+  names_col = c("MHPA", "UKGTS", "GHT","FOST", "LOGTS", "EAGLE", "AGIS")
 
   if(x_var == "os"){
     # create data frame to house graph variables
-    df.results_os_cluster = data.frame("OCT.Score"=1:4, "GHT"=1:4,"FOST"=1:4, "MHPA"=1:4, "UKGTS"=1:4,  "NUM"=1:4)
+    df.results_os_cluster = data.frame(matrix(0, nrow=4, ncol=length(names_col)+2))
+    colnames(df.results_os_cluster) = c("OCT.Score", names_col, "Total")
     df.results_os_cluster[,1] = c("0", "1-3", "4-5","6")
-
-    # set cell values to 0
-    for(row in 1:nrow(df.results_os_cluster)){
-      for(col in 2:ncol(df.results_os_cluster)){
-        df.results_os_cluster[row,col] = 0
-      }
-    }
 
     # record counts of OCT scores in the cells
     for(pat in 1:nrow(df.results)){
@@ -368,10 +365,10 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
       }
 
       # increment count of OCT bin
-      df.results_os_cluster[row,"NUM"] = df.results_os_cluster[row,"NUM"] + 1
+      df.results_os_cluster[row,"Total"] = df.results_os_cluster[row,"Total"] + 1
 
       # increment count of OCT-VFcriterion cell
-      for(col in c("GHT", "FOST", "UKGTS", "MHPA")){
+      for(col in names_col){
         #print(pat)
         if(df.results[pat,col] == T)
           df.results_os_cluster[row,col] = df.results_os_cluster[row,col] + 1
@@ -381,31 +378,32 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
     assign("df.results_os_cluster", df.results_os_cluster, envir = .GlobalEnv)
 
     # confidence intervals
-    CIs = binom.confint(x=df.results_os_cluster[,2:5], n=df.results_os_cluster[,6], methods="wilson")
+    CI1 = binom.confint(x=df.results_os_cluster[,2:5], n=df.results_os_cluster[,"Total"], methods="wilson")
+    CI2 = binom.confint(x=df.results_os_cluster[,6], n=df.results_os_cluster[,"Total"], methods="wilson")
 
     # modify name of each bin
     for(row in 1:nrow(df.results_os_cluster)){
-      df.results_os_cluster[row,1] = paste0(df.results_os_cluster[row,1], "\nN=", df.results_os_cluster[row,6])
+      df.results_os_cluster[row,1] = paste0(df.results_os_cluster[row,1], "\nN=", df.results_os_cluster[row,"Total"])
     }
 
     # generate data frame to be graphed
-    df.results_graph = cbind(OCT.Score=df.results_os_cluster[,1], CIs[,7:18])
-    colnames(df.results_graph)[2:5] = c("GHT", "FOST", "MHPA", "UKGTS")
+    df.results_graph = cbind(OCT.Score=df.results_os_cluster[,1], CI1[7:10], CI2[,4])
+    colnames(df.results_graph)[2:6] = names_col[1:5]
     df.results_graph = within(df.results_graph,  OCT.Score <- factor(OCT.Score, levels=OCT.Score))
     print(df.results_graph)
 
     # melt
-    df.melted = melt(df.results_graph[,1:5], variable.name = "criterion", value.name = "Hit.Rate")
+    df.melted = melt(df.results_graph, variable.name = "criterion", value.name = "Hit.Rate")
     # round hit rates to 2 sig figs
     df.melted[,"Hit.Rate"] = round(df.melted[,"Hit.Rate"], digits=2)
     # add CI columns
     df.melted = cbind(df.melted,
-                      lower.CI=c(df.results_graph[,"lower.GHT"], df.results_graph[,"lower.FOST"], df.results_graph[,"lower.MHPA"], df.results_graph[,"lower.UKGTS"]),
-                      upper.CI=c(df.results_graph[,"upper.GHT"], df.results_graph[,"upper.FOST"], df.results_graph[,"upper.MHPA"], df.results_graph[,"upper.UKGTS"]))
+                      lower.CI=c(CI1[,"lower.MHPA"], CI1[,"lower.UKGTS"], CI1[,"lower.GHT"], CI1[,"lower.FOST"], CI2[,"lower"]),
+                      upper.CI=c(CI1[,"upper.MHPA"], CI1[,"upper.UKGTS"], CI1[,"upper.GHT"], CI1[,"upper.FOST"], CI2[,"upper"]))
     print(df.melted)
     plot.hist = ggplot(df.melted, aes(x=OCT.Score, y=Hit.Rate, fill=criterion)) +
       geom_point(position = position_dodge(0.5), stat = "identity", aes(fill = criterion), size = 5, shape = 21, colour = "black", size = 5, stroke = 1) +
-      scale_fill_manual(values = c(GHT = "#bbbcbe", FOST = "#ffffb1", MHPA = "#ffb1b1", UKGTS = "#b1e6fa")) +
+      scale_fill_manual(values = c(MHPA = "#ffb1b1", UKGTS = "#b1e6fa", GHT = "#bbbcbe", FOST = "#ffffb1", LOGTS = "white")) +
       geom_errorbar(position=position_dodge(0.5), width=.4, aes(ymin=lower.CI, ymax=upper.CI)) +
       #geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=3, position=position_dodge(0.9)) +
       theme_bw(base_size = 22) #+
@@ -414,15 +412,10 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
   }
   else if(x_var == "md"){
     # create data frame to house graph variables
-    df.results_md_cluster = data.frame("MD"=1:4, "GHT"=1:4, "FOST"=1:4, "MHPA"=1:4, "UKGTS"=1:4,  "NUM"=1:4)
+    df.results_md_cluster = data.frame(matrix(0, nrow=4, ncol=length(names_col)+2))
+    colnames(df.results_md_cluster) = c("MD", names_col, "Total")
     df.results_md_cluster[,1] = c(">10%", "2-10%", "0.5-2%", "<0.5%")
     md.db_10 = md.db_5 = md.db_1 = md.db_05 = double()
-
-    for(row in 1:nrow(df.results_md_cluster)){
-      for(col in 2:ncol(df.results_md_cluster)){
-        df.results_md_cluster[row,col] = 0
-      }
-    }
 
     for(pat in 1:nrow(df.results)){
       md = df.results[pat,"MD.pval"]
@@ -452,9 +445,9 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
         row = 2
         md.db_5 = c(md.db_5, round(as.double(as.character(df.results[pat,"MD.db"])), 2))
       }
-      df.results_md_cluster[row,6] = df.results_md_cluster[row,6] + 1
+      df.results_md_cluster[row,"Total"] = df.results_md_cluster[row,"Total"] + 1
 
-      for(col in c("GHT", "FOST", "UKGTS", "MHPA")){
+      for(col in names_col){
         #print(pat)
         if(df.results[pat,col] == T)
           df.results_md_cluster[row,col] = df.results_md_cluster[row,col] + 1
@@ -464,9 +457,8 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
     assign("df.results_md_cluster", df.results_md_cluster, envir = .GlobalEnv)
 
     # confidence intervals
-    #CIs = rbind(binom.confint(x=df.results_md_cluster[1:4,2:5], n=df.results_md_cluster[1:4,6], methods="wilson"),
-    #            binom.confint(x=df.results_md_cluster[3:6,2:5], n=df.results_md_cluster[3:6,6], methods="wilson")[3:4,])
-    CIs = binom.confint(x=df.results_md_cluster[,2:5], n=df.results_md_cluster[,6], methods="wilson")
+    CI1 = binom.confint(x=df.results_md_cluster[,2:5], n=df.results_md_cluster[,"Total"], methods="wilson")
+    CI2 = binom.confint(x=df.results_md_cluster[,6], n=df.results_md_cluster[,"Total"], methods="wilson")
 
     # modify name of each bin
     md.db = list(md.db_10, md.db_5, md.db_1, md.db_05)
@@ -475,23 +467,23 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
     }
 
     # generate data frame to be graphed
-    df.results_graph = cbind(MD=df.results_md_cluster[,1], CIs[,7:18])
-    colnames(df.results_graph)[2:5] = c("GHT", "FOST", "MHPA", "UKGTS")
+    df.results_graph = cbind(MD=df.results_md_cluster[,1], CI1[,7:10], CI2[,4])
+    colnames(df.results_graph)[2:6] = names_col[1:5]
     df.results_graph = within(df.results_graph,  MD <- factor(MD, levels=MD))
     print(df.results_graph)
 
     # melt
-    df.melted = melt(df.results_graph[,1:5], variable.name = "criterion", value.name = "Hit.Rate")
+    df.melted = melt(df.results_graph, variable.name = "criterion", value.name = "Hit.Rate")
     # round hit rates to 2 sig figs
     df.melted[,"Hit.Rate"] = round(df.melted[,"Hit.Rate"], digits=2)
     # add CI columns
     df.melted = cbind(df.melted,
-                      lower.CI=c(df.results_graph[,"lower.GHT"], df.results_graph[,"lower.FOST"], df.results_graph[,"lower.MHPA"], df.results_graph[,"lower.UKGTS"]),
-                      upper.CI=c(df.results_graph[,"upper.GHT"], df.results_graph[,"upper.FOST"], df.results_graph[,"upper.MHPA"], df.results_graph[,"upper.UKGTS"]))
+                      lower.CI=c(CI1[,"lower.MHPA"], CI1[,"lower.UKGTS"], CI1[,"lower.GHT"], CI1[,"lower.FOST"], CI2[,"lower"]),
+                      upper.CI=c(CI1[,"upper.MHPA"], CI1[,"upper.UKGTS"], CI1[,"upper.GHT"], CI1[,"upper.FOST"], CI2[,"upper"]))
     print(df.melted)
     plot.hist = ggplot(df.melted, aes(x=MD, y=Hit.Rate, fill=criterion)) +
       geom_point(position = position_dodge(0.5), stat = "identity", aes(fill = criterion), size = 5, shape = 21, colour = "black", size = 5, stroke = 1) +
-      scale_fill_manual(values = c(GHT = "#bbbcbe", FOST = "#ffffb1", MHPA = "#ffb1b1", UKGTS = "#b1e6fa")) +
+      scale_fill_manual(values = c(GHT = "#bbbcbe", FOST = "#ffffb1", MHPA = "#ffb1b1", UKGTS = "#b1e6fa", LOGTS = "white")) +
       geom_errorbar(position=position_dodge(0.5), width=.4, aes(ymin=lower.CI, ymax=upper.CI)) +
       #geom_text(aes(label = Hit.Rate, group = criterion), size=6, hjust=0.5, vjust=3, position=position_dodge(0.9)) +
       theme_bw(base_size = 22) #+
@@ -505,34 +497,64 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
     #  theme_bw(base_size = 22) +
     #  theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
   }
-  else if(x_var == "rev"){
+  else if(x_var == "rmd"){
 
     # confidence intervals
-    #CIs = rbind(binom.confint(x=df.results_md_cluster[1:4,2:5], n=df.results_md_cluster[1:4,6], methods="wilson"),
-    #            binom.confint(x=df.results_md_cluster[3:6,2:5], n=df.results_md_cluster[3:6,6], methods="wilson")[3:4,])
-    CIs = binom.confint(x=df.criteria_consistency[1:4,2:5], n=df.criteria_consistency[1:4, "Total"], methods="wilson")
+    CI1 = binom.confint(x=df.criteria_reproducibility_md[1:4,2:5], n=df.criteria_reproducibility_md[1:4,"Num"], methods="wilson")
+    CI2 = binom.confint(x=df.criteria_reproducibility_md[1:4,6], n=df.criteria_reproducibility_md[1:4,"Num"], methods="wilson")
 
     # modify name of each bin
-    x_names = paste0(df.criteria_consistency[1:4,1], "\nN=", df.criteria_consistency[1:4, "Total"])
+    x_names = paste0(df.criteria_reproducibility_md[1:4,1], "\nN=", df.criteria_reproducibility_md[1:4, "Num"])
 
     # generate data frame to be graphed
-    df.results_graph = cbind(MD=x_names, CIs[,7:18])
-    colnames(df.results_graph)[2:5] = c("GHT", "FOST", "MHPA", "UKGTS")
+    df.results_graph = cbind(MD=x_names, CI1[,7:10], CI2[,4])
+    colnames(df.results_graph)[2:6] = names_col[1:5]
     df.results_graph = within(df.results_graph,  MD <- factor(MD, levels=MD))
     print(df.results_graph)
 
     # melt
-    df.melted = melt(df.results_graph[,1:5], variable.name = "criterion", value.name = "Repeat.Error.Rate")
+    df.melted = melt(df.results_graph, variable.name = "criterion", value.name = "Repeat.Error.Rate")
     # round hit rates to 2 sig figs
     df.melted[,"Repeat.Error.Rate"] = round(df.melted[,"Repeat.Error.Rate"], digits=2)
     # add CI columns
     df.melted = cbind(df.melted,
-                      lower.CI=c(df.results_graph[,"lower.GHT"], df.results_graph[,"lower.FOST"], df.results_graph[,"lower.MHPA"], df.results_graph[,"lower.UKGTS"]),
-                      upper.CI=c(df.results_graph[,"upper.GHT"], df.results_graph[,"upper.FOST"], df.results_graph[,"upper.MHPA"], df.results_graph[,"upper.UKGTS"]))
+                      lower.CI=c(CI1[,"lower.MHPA"], CI1[,"lower.UKGTS"], CI1[,"lower.GHT"], CI1[,"lower.FOST"], CI2[,"lower"]),
+                      upper.CI=c(CI1[,"upper.MHPA"], CI1[,"upper.UKGTS"], CI1[,"upper.GHT"], CI1[,"upper.FOST"], CI2[,"upper"]))
     print(df.melted)
     plot.hist = ggplot(df.melted, aes(x=MD, y=Repeat.Error.Rate, fill=criterion)) +
       geom_point(position = position_dodge(0.5), stat = "identity", aes(fill = criterion), size = 5, shape = 21, colour = "black", size = 5, stroke = 1) +
-      scale_fill_manual(values = c(GHT = "#bbbcbe", FOST = "#ffffb1", MHPA = "#ffb1b1", UKGTS = "#b1e6fa")) +
+      scale_fill_manual(values = c(GHT = "#bbbcbe", FOST = "#ffffb1", MHPA = "#ffb1b1", UKGTS = "#b1e6fa", LOGTS = "white")) +
+      geom_errorbar(position=position_dodge(0.5), width=.4, aes(ymin=lower.CI, ymax=upper.CI)) +
+      #geom_text(aes(label = Repeat.Error.Rate, group = criterion), size=6, hjust=0.5, vjust=3, position=position_dodge(0.9)) +
+      theme_bw(base_size = 22)
+  }
+  else if(x_var == "ros"){
+
+    # confidence intervals
+    CI1 = binom.confint(x=df.criteria_reproducibility_os[1:4,2:5], n=df.criteria_reproducibility_os[1:4,"Num"], methods="wilson")
+    CI2 = binom.confint(x=df.criteria_reproducibility_os[1:4,6], n=df.criteria_reproducibility_os[1:4,"Num"], methods="wilson")
+
+    # modify name of each bin
+    x_names = paste0(df.criteria_reproducibility_os[1:4,1], "\nN=", df.criteria_reproducibility_os[1:4, "Num"])
+
+    # generate data frame to be graphed
+    df.results_graph = cbind(OCT.Score=x_names, CI1[,7:10], CI2[,4])
+    colnames(df.results_graph)[2:6] = names_col[1:5]
+    df.results_graph = within(df.results_graph,  OCT.Score <- factor(OCT.Score, levels=OCT.Score))
+    print(df.results_graph)
+
+    # melt
+    df.melted = melt(df.results_graph, variable.name = "criterion", value.name = "Repeat.Error.Rate")
+    # round hit rates to 2 sig figs
+    df.melted[,"Repeat.Error.Rate"] = round(df.melted[,"Repeat.Error.Rate"], digits=2)
+    # add CI columns
+    df.melted = cbind(df.melted,
+                      lower.CI=c(CI1[,"lower.MHPA"], CI1[,"lower.UKGTS"], CI1[,"lower.GHT"], CI1[,"lower.FOST"], CI2[,"lower"]),
+                      upper.CI=c(CI1[,"upper.MHPA"], CI1[,"upper.UKGTS"], CI1[,"upper.GHT"], CI1[,"upper.FOST"], CI2[,"upper"]))
+    print(df.melted)
+    plot.hist = ggplot(df.melted, aes(x=OCT.Score, y=Repeat.Error.Rate, fill=criterion)) +
+      geom_point(position = position_dodge(0.5), stat = "identity", aes(fill = criterion), size = 5, shape = 21, colour = "black", size = 5, stroke = 1) +
+      scale_fill_manual(values = c(GHT = "#bbbcbe", FOST = "#ffffb1", MHPA = "#ffb1b1", UKGTS = "#b1e6fa", LOGTS = "white")) +
       geom_errorbar(position=position_dodge(0.5), width=.4, aes(ymin=lower.CI, ymax=upper.CI)) +
       #geom_text(aes(label = Repeat.Error.Rate, group = criterion), size=6, hjust=0.5, vjust=3, position=position_dodge(0.9)) +
       theme_bw(base_size = 22)
@@ -664,15 +686,34 @@ createPdf = function(first_pat = 1, last_pat = NUM_PAT)
 #' @export
 assignVfCriteria = function()
 {
-  assign("df.criteria_results", data.frame("Patient.ID"=1:NUM_PAT, "Eye"=1:NUM_PAT, "Date.Time"=1:NUM_PAT, "MD.db"=1:NUM_PAT, "MD.pval"=1:NUM_PAT,
-                                           "FOST"=1:NUM_PAT, "MHPA"=1:NUM_PAT, "UKGTS"=1:NUM_PAT, "GHT"=1:NUM_PAT),
+  assign("df.criteria_results", data.frame("Patient.ID"=integer(), "Eye"=integer(), "Date.Time"=integer(),
+                                           "MD.db"=double(), "MD.pval"=double(),
+                                           "GHT"=integer(), "FOST"=integer(), "MHPA"=integer(),
+                                           "LOGTS"=integer(), "UKGTS"=integer(), "EAGLE"=integer(), "AGIS"=integer()),
                                            envir = .GlobalEnv)
   for(pat in 1:NUM_PAT)
   {
     df.criteria_results[pat,] <<- c(df.vf_data[(pat+VF_V_OFST),1], df.vf_data[(pat+VF_V_OFST),4],
-                                    df.vf_data[(pat+VF_V_OFST),3], df.vf_data[(pat+VF_V_OFST),MD_H_OFST-1], df.vf_data[(pat+VF_V_OFST),MD_H_OFST],
-                                    checkFostCriteria(pat), checkMhpaCriteria(pat), checkUkgtsCriteria(pat), checkGhtCriteria(pat))
+                                    df.vf_data[(pat+VF_V_OFST),3], df.vf_data[(pat+VF_V_OFST),MD_H_OFST-1],
+                                    df.vf_data[(pat+VF_V_OFST),MD_H_OFST],
+                                    checkGhtCriteria(pat), checkFostCriteria(pat), checkMhpaCriteria(pat),
+                                    checkLogtsCriteria(pat), checkUkgtsCriteria(pat), checkEagleCriteria(pat), checkAgisCriteria(pat))
   }
+}
+
+#' GHT criteria (GHT)
+#'
+#' Glaucoma Hemifield Test (GHT) “outside normal limits”
+#' @param pat_id Patient position in the list on the excel spreadsheet
+#' @return BOOL Whether patient VF analysis resulted in a positive result.
+#' @export
+checkGhtCriteria = function(pat_id)
+{
+  ght = df.vf_data[VF_V_OFST+pat_id,GHT_H_OFST]
+  if(ght == "Outside normal limits")
+    return(TRUE)
+
+  return(FALSE)
 }
 
 #' Foster criteria (FOST)
@@ -918,18 +959,95 @@ checkUkgtsCriteria = function(pat_id)
   return(FALSE)
 }
 
-#' GHT criteria (GHT)
+#' Low-pressure glaucoma treatment study criteria (LOGTS)
 #'
-#' Glaucoma Hemifield Test (GHT) “outside normal limits”
+#' Presence of at least 3 contiguous points depressed more than 8 decibels or 2 contiguous points depressed more than 10 decibels on TD plot
 #' @param pat_id Patient position in the list on the excel spreadsheet
 #' @return BOOL Whether patient VF analysis resulted in a positive result.
 #' @export
-checkGhtCriteria = function(pat_id)
+checkLogtsCriteria = function(pat_id)
 {
-  ght = df.vf_data[VF_V_OFST+pat_id,GHT_H_OFST]
-  if(ght == "Outside normal limits")
-    return(TRUE)
+  #import data points
+  df.VF_TD = data.frame(t(df.vf_data[VF_V_OFST+pat_id, TD_H_OFST:(TD_H_OFST+VF_H_SIZE-1)]))
 
+  # check cluster of 2 points
+  for(pt1 in 1:VF_H_SIZE)
+  {
+    if(!(is.na(df.VF_TD[pt1,1])))
+    {
+      if((df.VF_TD[pt1,1] < -10))
+      {
+        print(paste0("pt1=", pt1))
+
+        for(n1 in 4:11)
+        {
+          pt2 = df.pt_mapping[pt1,n1]
+
+          if(!(is.na(df.VF_TD[pt2,1])))
+          {
+            if(df.VF_TD[pt2,1] < -10)
+            {
+              print(paste0("pt2=", pt2))
+
+              return(TRUE)
+            }
+          }
+        }
+      }
+    }
+  }
+
+  # check cluster of 3 points
+  for(pt1 in 1:VF_H_SIZE)
+  {
+    if(!(is.na(df.VF_TD[pt1,1])))
+    {
+      if((df.VF_TD[pt1,1] < -8))
+      {
+        print(paste0("pt1=", pt1))
+
+        for(n1 in 4:11)
+        {
+          pt2 = df.pt_mapping[pt1,n1]
+
+          if(!(is.na(df.VF_TD[pt2,1])))
+          {
+            if(df.VF_TD[pt2,1] < -8)
+            {
+              print(paste0("pt2=", pt2))
+
+              for(n2 in 4:11)
+              {
+                pt3 = df.pt_mapping[pt2,n2]
+
+                if(!(is.na(df.VF_TD[pt3,1])))
+                {
+                  if(df.VF_TD[pt3,1] < -8)
+                  {
+                    if(pt1 != pt3)
+                    {
+                      print(paste0("pt3=", pt3))
+                      return(TRUE)
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  return(FALSE)
+}
+
+checkEagleCriteria = function(pat_id)
+{
+  return(FALSE)
+}
+
+checkAgisCriteria = function(pat_id)
+{
   return(FALSE)
 }
 
@@ -950,15 +1068,18 @@ matchVfToOct = function(window = 4)
 
   ls.criteria_results.unique = unique(df.criteria_results[,"Patient.ID"])
 
-  df.best_match = data.frame(matrix(NA, nrow = 0, ncol = 39))
-  colnames(df.best_match) = c("Patient.ID",
-                              "Eye.Vf", "Eye.RNFL", "Eye.MRW", "Eye.GCL",
-                              "Date.Vf", "Date.RNFL", "Date.MRW", "Date.GCL",
-                              "Quality.RNFL", "Quality.MRW", "Quality.GCL",
-                              "FOST", "MHPA", "UKGTS", "GHT", "MD.db", "MD.pval",
-                              "RNFLClass_G", "RNFLClass_T", "RNFLClass_TS", "RNFLClass_TI", "RNFLClass_N", "RNFLClass_NS", "RNFLClass_NI",
-                              "MRW.P.Global", "MRW.P.Tmp", "MRW.P.TS", "MRW.P.TI", "MRW.P.Nas", "MRW.P.NS", "MRW.P.NI",
-                              "GCL.ABN.Global", "GCL.ABN.Sup", "GCL.ABN.TS", "GCL.ABN.NS", "GCL.ABN.Inf", "GCL.ABN.NI", "GCL.ABN.TI")
+  names = c("Patient.ID",
+            "Eye.Vf", "Eye.RNFL", "Eye.MRW", "Eye.GCL",
+            "Date.Vf", "Date.RNFL", "Date.MRW", "Date.GCL",
+            "Quality.RNFL", "Quality.MRW", "Quality.GCL",
+            "GHT", "FOST", "MHPA", "LOGTS", "UKGTS", "EAGLE", "AGIS",
+            "MD.db", "MD.pval",
+            "RNFLClass_G", "RNFLClass_T", "RNFLClass_TS", "RNFLClass_TI", "RNFLClass_N", "RNFLClass_NS", "RNFLClass_NI",
+            "MRW.P.Global", "MRW.P.Tmp", "MRW.P.TS", "MRW.P.TI", "MRW.P.Nas", "MRW.P.NS", "MRW.P.NI",
+            "GCL.ABN.Global", "GCL.ABN.Sup", "GCL.ABN.TS", "GCL.ABN.NS", "GCL.ABN.Inf", "GCL.ABN.NI", "GCL.ABN.TI")
+
+  df.best_match = data.frame(matrix(NA, nrow = 0, ncol = length(names)))
+  colnames(df.best_match) = names
 
   time_bound = 2592000*window
 
@@ -1041,19 +1162,13 @@ matchVfToOct = function(window = 4)
                             as.Date.POSIXct(as.integer(df.criteria_results[vf.idx,"Date.Time"])),
                             df.rnfl_data[rnfl.idx,"ExamDate"], df.mrw_data[mrw.idx,"ExamDate"], as.Date.POSIXct(df.gcl_data[gcl.idx,"ExamDate"]),
                             df.rnfl_data[rnfl.idx,"Quality"], df.mrw_data[mrw.idx,"Mean.Quality"], df.gcl_data[gcl.idx,"Quality"],
-                            df.criteria_results[vf.idx, 6:9], df.criteria_results[vf.idx,"MD.db"], df.criteria_results[vf.idx,"MD.pval"],
+                            df.criteria_results[vf.idx, 6:12], df.criteria_results[vf.idx,"MD.db"], df.criteria_results[vf.idx,"MD.pval"],
                             df.rnfl_data[rnfl.idx, 19:25],
                             df.mrw_data[mrw.idx, 134:140],
                             df.gcl_data[gcl.idx, 4:10])
 
-    colnames(best_match) = c("Patient.ID",
-                             "Eye.Vf", "Eye.RNFL", "Eye.MRW", "Eye.GCL",
-                             "Date.Vf", "Date.RNFL", "Date.MRW", "Date.GCL",
-                             "Quality.RNFL", "Quality.MRW", "Quality.GCL",
-                             "FOST", "MHPA", "UKGTS", "GHT", "MD.db", "MD.pval",
-                             "RNFLClass_G", "RNFLClass_T", "RNFLClass_TS", "RNFLClass_TI", "RNFLClass_N", "RNFLClass_NS", "RNFLClass_NI",
-                             "MRW.P.Global", "MRW.P.Tmp", "MRW.P.TS", "MRW.P.TI", "MRW.P.Nas", "MRW.P.NS", "MRW.P.NI",
-                             "GCL.ABN.Global", "GCL.ABN.Sup", "GCL.ABN.TS", "GCL.ABN.NS", "GCL.ABN.Inf", "GCL.ABN.NI", "GCL.ABN.TI")
+    colnames(best_match) = names
+
     df.best_match = rbind(df.best_match, best_match)
 
     #if(a == 4){
@@ -1128,23 +1243,33 @@ scoreOct = function(df.results = df.best_match)
 
     df.oct_scores[pat,"OCT.Score"] = oct.score
   }
-  assign("df.best_match", data.frame(df.results[,1:18], df.oct_scores, df.results[,19:39]), envir = .GlobalEnv)
+  assign("df.best_match", data.frame(df.results[,1:21], df.oct_scores, df.results[,22:39]), envir = .GlobalEnv)
 }
 
-#' OCT Score
+#' Reproducibility
 #'
 #' Assigns OCT score to patient based on RNFLT, MRW, and GCLT
 #' @param df.results formatted results to be used
 #' @return none
 #' @export
-checkCriteriaConsistency = function()
+checkCriteriaReproducibility = function()
 {
-  df.criteria_consistency = data.frame(matrix(0, nrow=6, ncol=4))
-  colnames(df.criteria_consistency) = c("GHT", "FOST", "MHPA", "UKGTS")
-  rownames(df.criteria_consistency) = c(">10%", "2-10%", "0.5-2%", "<0.5%", "Reversals", "Total unique VF pairs")
-  df.criteria_consistency = data.frame("MD"=rownames(df.criteria_consistency), df.criteria_consistency)
+  names_col = c("MHPA", "UKGTS", "GHT","FOST", "LOGTS", "EAGLE", "AGIS", "Num")
+  names_row = c(">10%", "2-10%", "0.5-2%", "<0.5%", "Total")
+  df.criteria_reproducibility_md = data.frame(matrix(0, nrow=length(names_row), ncol=length(names_col)))
+  colnames(df.criteria_reproducibility_md) = names_col
+  rownames(df.criteria_reproducibility_md) = names_row
+  df.criteria_reproducibility_md = data.frame("MD"=rownames(df.criteria_reproducibility_md), df.criteria_reproducibility_md)
+
+  names_row = c("6", "4-5", "1-3", "0", "Total")
+  df.criteria_reproducibility_os = data.frame(matrix(0, nrow=length(names_row), ncol=length(names_col)))
+  colnames(df.criteria_reproducibility_os) = names_col
+  rownames(df.criteria_reproducibility_os) = names_row
+  df.criteria_reproducibility_os = data.frame("OCT.Score"=rownames(df.criteria_reproducibility_os), df.criteria_reproducibility_os)
 
   for(pat.i in 1:nrow(df.best_match)){
+    ght = fost = mhpa = logts = ukgts = eagle = agis = F
+    row = row2 = ""
     id = df.best_match[pat.i,"Patient.ID"]
     date1 = df.best_match[pat.i,"Date.Vf"]
 
@@ -1152,148 +1277,133 @@ checkCriteriaConsistency = function()
       date2 = as.Date.POSIXct(as.double(df.criteria_results[pat.j,"Date.Time"]))
 
       if(date2 > date1){
-        if(df.best_match[pat.i,"GHT"] == T){
-          df.criteria_consistency["Total unique VF pairs","GHT"] = df.criteria_consistency["Total unique VF pairs","GHT"] + 1
+
+        md = df.best_match[pat.i,"MD.pval"]
+
+        if(is.na(md)){
+          row = ">10%"
+        }
+        else if(md == 0.005){
+          row = "<0.5%"
+        }
+        else if(md == 0.01){
+          row = "0.5-2%"
+        }
+        else if(md == 0.02){
+          row = "0.5-2%"
+        }
+        else if(md == 0.05){
+          row = "2-10%"
+        }
+        else if(md == 0.1){
+          row = "2-10%"
+        }
+
+        os = df.best_match[pat.i,"OCT.Score"]
+
+        if(os == 0){
+          row2 = "0"
+        }
+        else if(inside.range(os, c(1,3))){
+          row2 = "1-3"
+        }
+        else if(inside.range(os, c(4,5))){
+          row2 = "4-5"
+        }
+        else if(os == 6){
+          row2 = "6"
+        }
+
+        if((ght == F) && (fost == F) && (mhpa == F) && (ukgts == F)){
+          if((df.best_match[pat.i,"GHT"] == T) || (df.best_match[pat.i,"FOST"] == T) || (df.best_match[pat.i,"MHPA"] == T) || (df.best_match[pat.i,"UKGTS"] == T))
+            df.criteria_reproducibility_md[row,"Num"] = df.criteria_reproducibility_md[row,"Num"] + 1
+            df.criteria_reproducibility_os[row2,"Num"] = df.criteria_reproducibility_os[row2,"Num"] + 1
+        }
+
+
+
+        if((ght == F) && (df.best_match[pat.i,"GHT"] == T)){
+          df.criteria_reproducibility_md["Total","GHT"] = df.criteria_reproducibility_md["Total","GHT"] + 1
+          df.criteria_reproducibility_os["Total","GHT"] = df.criteria_reproducibility_os["Total","GHT"] + 1
+
           if(df.criteria_results[pat.j,"GHT"] == F){
-
-            md = df.best_match[pat.i,"MD.pval"]
-
-            if(is.na(md)){
-              row = ">10%"
-            }
-            else if(md == 0.005){
-              row = "<0.5%"
-            }
-            else if(md == 0.01){
-              row = "0.5-2%"
-            }
-            else if(md == 0.02){
-              row = "0.5-2%"
-            }
-            else if(md == 0.05){
-              row = "2-10%"
-            }
-            else if(md == 0.1){
-              row = "2-10%"
-            }
-            df.criteria_consistency[row,"GHT"] = df.criteria_consistency[row,"GHT"] + 1
-            df.criteria_consistency["Reversals","GHT"] = df.criteria_consistency["Reversals","GHT"] + 1
-            break
+            ght = T
+            df.criteria_reproducibility_md[row,"GHT"] = df.criteria_reproducibility_md[row,"GHT"] + 1
+            df.criteria_reproducibility_os[row2,"GHT"] = df.criteria_reproducibility_os[row2,"GHT"] + 1
           }
         }
-      }
-    }
 
-    for(pat.j in which(as.integer(df.criteria_results[,"Patient.ID"]) == id)){
-      date2 = as.Date.POSIXct(as.double(df.criteria_results[pat.j,"Date.Time"]))
+        if((fost == F) && (df.best_match[pat.i,"FOST"] == T)){
+          df.criteria_reproducibility_md["Total","FOST"] = df.criteria_reproducibility_md["Total","FOST"] + 1
+          df.criteria_reproducibility_os["Total","FOST"] = df.criteria_reproducibility_os["Total","FOST"] + 1
 
-      if(date2 > date1){
-        if(df.best_match[pat.i,"FOST"] == T){
-          df.criteria_consistency["Total unique VF pairs","FOST"] = df.criteria_consistency["Total unique VF pairs","FOST"] + 1
           if(df.criteria_results[pat.j,"FOST"] == F){
-
-            md = df.best_match[pat.i,"MD.pval"]
-
-            if(is.na(md)){
-              row = ">10%"
-            }
-            else if(md == 0.005){
-              row = "<0.5%"
-            }
-            else if(md == 0.01){
-              row = "0.5-2%"
-            }
-            else if(md == 0.02){
-              row = "0.5-2%"
-            }
-            else if(md == 0.05){
-              row = "2-10%"
-            }
-            else if(md == 0.1){
-              row = "2-10%"
-            }
-            df.criteria_consistency[row,"FOST"] = df.criteria_consistency[row,"FOST"] + 1
-            df.criteria_consistency["Reversals","FOST"] = df.criteria_consistency["Reversals","FOST"] + 1
-            break
+            fost = T
+            df.criteria_reproducibility_md[row,"FOST"] = df.criteria_reproducibility_md[row,"FOST"] + 1
+            df.criteria_reproducibility_os[row2,"FOST"] = df.criteria_reproducibility_os[row2,"FOST"] + 1
           }
         }
-      }
-    }
 
-    for(pat.j in which(as.integer(df.criteria_results[,"Patient.ID"]) == id)){
-      date2 = as.Date.POSIXct(as.double(df.criteria_results[pat.j,"Date.Time"]))
+        if((mhpa == F) && (df.best_match[pat.i,"MHPA"] == T)){
+          df.criteria_reproducibility_md["Total","MHPA"] = df.criteria_reproducibility_md["Total","MHPA"] + 1
+          df.criteria_reproducibility_os["Total","MHPA"] = df.criteria_reproducibility_os["Total","MHPA"] + 1
 
-      if(date2 > date1){
-       if(df.best_match[pat.i,"MHPA"] == T){
-          df.criteria_consistency["Total unique VF pairs","MHPA"] = df.criteria_consistency["Total unique VF pairs","MHPA"] + 1
           if(df.criteria_results[pat.j,"MHPA"] == F){
-
-            md = df.best_match[pat.i,"MD.pval"]
-
-            if(is.na(md)){
-              row = ">10%"
-            }
-            else if(md == 0.005){
-              row = "<0.5%"
-            }
-            else if(md == 0.01){
-              row = "0.5-2%"
-            }
-            else if(md == 0.02){
-              row = "0.5-2%"
-            }
-            else if(md == 0.05){
-              row = "2-10%"
-            }
-            else if(md == 0.1){
-              row = "2-10%"
-            }
-            df.criteria_consistency[row,"MHPA"] = df.criteria_consistency[row,"MHPA"] + 1
-            df.criteria_consistency["Reversals","MHPA"] = df.criteria_consistency["Reversals","MHPA"] + 1
-            break
+            mhpa = T
+            df.criteria_reproducibility_md[row,"MHPA"] = df.criteria_reproducibility_md[row,"MHPA"] + 1
+            df.criteria_reproducibility_os[row2,"MHPA"] = df.criteria_reproducibility_os[row2,"MHPA"] + 1
           }
-       }
-      }
-    }
+        }
 
-    for(pat.j in which(as.integer(df.criteria_results[,"Patient.ID"]) == id)){
-      date2 = as.Date.POSIXct(as.double(df.criteria_results[pat.j,"Date.Time"]))
+        if((logts == F) && (df.best_match[pat.i,"LOGTS"] == T)){
+          df.criteria_reproducibility_md["Total","LOGTS"] = df.criteria_reproducibility_md["Total","LOGTS"] + 1
+          df.criteria_reproducibility_os["Total","LOGTS"] = df.criteria_reproducibility_os["Total","LOGTS"] + 1
 
-      if(date2 > date1){
-        if(df.best_match[pat.i,"UKGTS"] == T){
-          df.criteria_consistency["Total unique VF pairs","UKGTS"] = df.criteria_consistency["Total unique VF pairs","UKGTS"] + 1
+          if(df.criteria_results[pat.j,"LOGTS"] == F){
+            logts = T
+            df.criteria_reproducibility_md[row,"LOGTS"] = df.criteria_reproducibility_md[row,"LOGTS"] + 1
+            df.criteria_reproducibility_os[row2,"LOGTS"] = df.criteria_reproducibility_os[row2,"LOGTS"] + 1
+          }
+        }
+
+        if((ukgts == F) && (df.best_match[pat.i,"UKGTS"] == T)){
+          df.criteria_reproducibility_md["Total","UKGTS"] = df.criteria_reproducibility_md["Total","UKGTS"] + 1
+          df.criteria_reproducibility_os["Total","UKGTS"] = df.criteria_reproducibility_os["Total","UKGTS"] + 1
+
           if(df.criteria_results[pat.j,"UKGTS"] == F){
+            ukgts = T
+            df.criteria_reproducibility_md[row,"UKGTS"] = df.criteria_reproducibility_md[row,"UKGTS"] + 1
+            df.criteria_reproducibility_os[row2,"UKGTS"] = df.criteria_reproducibility_os[row2,"UKGTS"] + 1
+          }
+        }
 
-            md = df.best_match[pat.i,"MD.pval"]
+        if((eagle == F) && (df.best_match[pat.i,"EAGLE"] == T)){
+          df.criteria_reproducibility_md["Total","EAGLE"] = df.criteria_reproducibility_md["Total","EAGLE"] + 1
+          df.criteria_reproducibility_os["Total","EAGLE"] = df.criteria_reproducibility_os["Total","EAGLE"] + 1
 
-            if(is.na(md)){
-              row = ">10%"
-            }
-            else if(md == 0.005){
-              row = "<0.5%"
-            }
-            else if(md == 0.01){
-              row = "0.5-2%"
-            }
-            else if(md == 0.02){
-              row = "0.5-2%"
-            }
-            else if(md == 0.05){
-              row = "2-10%"
-            }
-            else if(md == 0.1){
-              row = "2-10%"
-            }
-            df.criteria_consistency[row,"UKGTS"] = df.criteria_consistency[row,"UKGTS"] + 1
-            df.criteria_consistency["Reversals","UKGTS"] = df.criteria_consistency["Reversals","UKGTS"] + 1
-            break
+          if(df.criteria_results[pat.j,"EAGLE"] == F){
+            eagle = T
+            df.criteria_reproducibility_md[row,"EAGLE"] = df.criteria_reproducibility_md[row,"EAGLE"] + 1
+            df.criteria_reproducibility_os[row2,"EAGLE"] = df.criteria_reproducibility_os[row2,"EAGLE"] + 1
+          }
+        }
+
+        if((agis == F) && (df.best_match[pat.i,"AGIS"] == T)){
+          df.criteria_reproducibility_md["Total","AGIS"] = df.criteria_reproducibility_md["Total","AGIS"] + 1
+          df.criteria_reproducibility_os["Total","AGIS"] = df.criteria_reproducibility_os["Total","AGIS"] + 1
+
+          if(df.criteria_results[pat.j,"AGIS"] == F){
+            agis = T
+            df.criteria_reproducibility_md[row,"AGIS"] = df.criteria_reproducibility_md[row,"AGIS"] + 1
+            df.criteria_reproducibility_os[row2,"AGIS"] = df.criteria_reproducibility_os[row2,"AGIS"] + 1
           }
         }
       }
     }
   }
-  df.criteria_consistency = data.frame(df.criteria_consistency, Total=c(sum(df.criteria_consistency[1,2:5]), sum(df.criteria_consistency[2,2:5]), sum(df.criteria_consistency[3,2:5]), sum(df.criteria_consistency[4,2:5]), 0, 0))
 
-  assign("df.criteria_consistency", df.criteria_consistency, envir = .GlobalEnv)
-  print(df.criteria_consistency)
+  assign("df.criteria_reproducibility_md", df.criteria_reproducibility_md, envir = .GlobalEnv)
+  assign("df.criteria_reproducibility_os", df.criteria_reproducibility_os, envir = .GlobalEnv)
+  print(df.criteria_reproducibility_md)
+  print(df.criteria_reproducibility_os)
 }
