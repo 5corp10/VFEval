@@ -1298,6 +1298,8 @@ checkCriteriaReproducibility = function()
         else if(md == 0.1){
           row = "2-10%"
         }
+        else
+          print("catch")
 
         os = df.best_match[pat.i,"OCT.Score"]
 
@@ -1314,13 +1316,15 @@ checkCriteriaReproducibility = function()
           row2 = "6"
         }
 
-        if((ght == F) && (fost == F) && (mhpa == F) && (ukgts == F)){
-          if((df.best_match[pat.i,"GHT"] == T) || (df.best_match[pat.i,"FOST"] == T) || (df.best_match[pat.i,"MHPA"] == T) || (df.best_match[pat.i,"UKGTS"] == T))
+        if((ght == F) && (fost == F) && (mhpa == F) && (ukgts == F) && (logts == F) && (eagle == F) && (agis == F)){
+          if((df.best_match[pat.i,"GHT"] == T) || (df.best_match[pat.i,"FOST"] == T) ||
+             (df.best_match[pat.i,"MHPA"] == T) || (df.best_match[pat.i,"UKGTS"] == T) ||
+             (df.best_match[pat.i,"LOGTS"] == T) || (df.best_match[pat.i,"EAGLE"] == T) ||
+             (df.best_match[pat.i,"AGIS"] == T)){
             df.criteria_reproducibility_md[row,"Num"] = df.criteria_reproducibility_md[row,"Num"] + 1
             df.criteria_reproducibility_os[row2,"Num"] = df.criteria_reproducibility_os[row2,"Num"] + 1
+          }
         }
-
-
 
         if((ght == F) && (df.best_match[pat.i,"GHT"] == T)){
           df.criteria_reproducibility_md["Total","GHT"] = df.criteria_reproducibility_md["Total","GHT"] + 1
