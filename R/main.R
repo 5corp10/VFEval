@@ -1377,27 +1377,27 @@ checkCriteriaReproducibility = function()
           }
         }
 
-        if((eagle == F) && (df.best_match[pat.i,"EAGLE"] == T)){
-          df.criteria_reproducibility_md["Total","EAGLE"] = df.criteria_reproducibility_md["Total","EAGLE"] + 1
-          df.criteria_reproducibility_os["Total","EAGLE"] = df.criteria_reproducibility_os["Total","EAGLE"] + 1
-
-          if(df.criteria_results[pat.j,"EAGLE"] == F){
-            eagle = T
-            df.criteria_reproducibility_md[row,"EAGLE"] = df.criteria_reproducibility_md[row,"EAGLE"] + 1
-            df.criteria_reproducibility_os[row2,"EAGLE"] = df.criteria_reproducibility_os[row2,"EAGLE"] + 1
-          }
-        }
-
-        if((agis == F) && (df.best_match[pat.i,"AGIS"] == T)){
-          df.criteria_reproducibility_md["Total","AGIS"] = df.criteria_reproducibility_md["Total","AGIS"] + 1
-          df.criteria_reproducibility_os["Total","AGIS"] = df.criteria_reproducibility_os["Total","AGIS"] + 1
-
-          if(df.criteria_results[pat.j,"AGIS"] == F){
-            agis = T
-            df.criteria_reproducibility_md[row,"AGIS"] = df.criteria_reproducibility_md[row,"AGIS"] + 1
-            df.criteria_reproducibility_os[row2,"AGIS"] = df.criteria_reproducibility_os[row2,"AGIS"] + 1
-          }
-        }
+        #if((eagle == F) && (df.best_match[pat.i,"EAGLE"] == T)){
+        #  df.criteria_reproducibility_md["Total","EAGLE"] = df.criteria_reproducibility_md["Total","EAGLE"] + 1
+        #  df.criteria_reproducibility_os["Total","EAGLE"] = df.criteria_reproducibility_os["Total","EAGLE"] + 1
+#
+        #  if(df.criteria_results[pat.j,"EAGLE"] == F){
+        #    eagle = T
+        #    df.criteria_reproducibility_md[row,"EAGLE"] = df.criteria_reproducibility_md[row,"EAGLE"] + 1
+        #    df.criteria_reproducibility_os[row2,"EAGLE"] = df.criteria_reproducibility_os[row2,"EAGLE"] + 1
+        #  }
+        #}
+#
+        #if((agis == F) && (df.best_match[pat.i,"AGIS"] == T)){
+        #  df.criteria_reproducibility_md["Total","AGIS"] = df.criteria_reproducibility_md["Total","AGIS"] + 1
+        #  df.criteria_reproducibility_os["Total","AGIS"] = df.criteria_reproducibility_os["Total","AGIS"] + 1
+#
+        #  if(df.criteria_results[pat.j,"AGIS"] == F){
+        #    agis = T
+        #    df.criteria_reproducibility_md[row,"AGIS"] = df.criteria_reproducibility_md[row,"AGIS"] + 1
+        #    df.criteria_reproducibility_os[row2,"AGIS"] = df.criteria_reproducibility_os[row2,"AGIS"] + 1
+        #  }
+        #}
       }
     }
   }
