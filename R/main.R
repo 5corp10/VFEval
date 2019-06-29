@@ -1261,7 +1261,7 @@ checkCriteriaReproducibility = function()
   rownames(df.criteria_reproducibility_md) = names_row
   df.criteria_reproducibility_md = data.frame("MD"=rownames(df.criteria_reproducibility_md), df.criteria_reproducibility_md)
 
-  names_row = c("6", "4-5", "1-3", "0", "Total")
+  names_row = c("0", "1-3", "4-5", "6", "Total")
   df.criteria_reproducibility_os = data.frame(matrix(0, nrow=length(names_row), ncol=length(names_col)))
   colnames(df.criteria_reproducibility_os) = names_col
   rownames(df.criteria_reproducibility_os) = names_row
