@@ -1,0 +1,33 @@
+VF
+Remove the ones without ID (OCT), and non 24-2 fields
+
+Remove Fix losses <16, FP < 16 and FN <31
+
+RNFL
+get only the fixed in mm (1) with diameter in mm of 3.4 to 3.6, quality > 15
+
+
+MRW
+get only the MeanQuality > 15 and displacement <100
+
+
+
+GCL
+get only the layer GCL 
+only quality > 15
+
+
+Use the studyIDs and Eye and date  to match VFs and OCTs
+. Get VFs with OCT within 4 months.
+
+ID-date-VFresults-OCT
+
+- In the RNFL table, the RNFLClass ONL is abnormal. G is global, other are other sectors (TSNI)
+
+- In the MRW table, the MRW.P lower than 0.01 is abnormal
+
+- In the macula table, abnormal sectors are TRUE
+
+
+
+-removed NAs from MRW and GCL

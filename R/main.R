@@ -463,7 +463,7 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
     # modify name of each bin
     md.db = list(md.db_10, md.db_5, md.db_1, md.db_05)
     for(row in 1:nrow(df.results_md_cluster)){
-      df.results_md_cluster[row,1] = paste0(df.results_md_cluster[row,1], "\nmed=", median(md.db[[row]]), "dB", "\nN=",df.results_md_cluster[row,6])
+      df.results_md_cluster[row,1] = paste0(df.results_md_cluster[row,1], "\nmed=", median(md.db[[row]]), "dB", "\nN=",df.results_md_cluster[row,"Total"])
     }
 
     # generate data frame to be graphed
@@ -500,11 +500,11 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
   else if(x_var == "rmd"){
 
     # confidence intervals
-    CI1 = binom.confint(x=df.criteria_reproducibility_md[1:4,2:5], n=df.criteria_reproducibility_md[1:4,"Num"], methods="wilson")
-    CI2 = binom.confint(x=df.criteria_reproducibility_md[1:4,6], n=df.criteria_reproducibility_md[1:4,"Num"], methods="wilson")
+    CI1 = binom.confint(x=df.criteria_reproducibility_md[1:4,2:5], n=df.criteria_reproducibility_md[1:4,"Total"], methods="wilson")
+    CI2 = binom.confint(x=df.criteria_reproducibility_md[1:4,6], n=df.criteria_reproducibility_md[1:4,"Total"], methods="wilson")
 
     # modify name of each bin
-    x_names = paste0(df.criteria_reproducibility_md[1:4,1], "\nN=", df.criteria_reproducibility_md[1:4, "Num"])
+    x_names = paste0(df.criteria_reproducibility_md[1:4,1], "\nN=", df.criteria_reproducibility_md[1:4, "Total"])
 
     # generate data frame to be graphed
     df.results_graph = cbind(MD=x_names, CI1[,7:10], CI2[,4])
@@ -531,11 +531,11 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
   else if(x_var == "ros"){
 
     # confidence intervals
-    CI1 = binom.confint(x=df.criteria_reproducibility_os[1:4,2:5], n=df.criteria_reproducibility_os[1:4,"Num"], methods="wilson")
-    CI2 = binom.confint(x=df.criteria_reproducibility_os[1:4,6], n=df.criteria_reproducibility_os[1:4,"Num"], methods="wilson")
+    CI1 = binom.confint(x=df.criteria_reproducibility_os[1:4,2:5], n=df.criteria_reproducibility_os[1:4,"Total"], methods="wilson")
+    CI2 = binom.confint(x=df.criteria_reproducibility_os[1:4,6], n=df.criteria_reproducibility_os[1:4,"Total"], methods="wilson")
 
     # modify name of each bin
-    x_names = paste0(df.criteria_reproducibility_os[1:4,1], "\nN=", df.criteria_reproducibility_os[1:4, "Num"])
+    x_names = paste0(df.criteria_reproducibility_os[1:4,1], "\nN=", df.criteria_reproducibility_os[1:4, "Total"])
 
     # generate data frame to be graphed
     df.results_graph = cbind(OCT.Score=x_names, CI1[,7:10], CI2[,4])
@@ -1254,7 +1254,7 @@ scoreOct = function(df.results = df.best_match)
 #' @export
 checkCriteriaReproducibility = function()
 {
-  names_col = c("MHPA", "UKGTS", "GHT","FOST", "LOGTS", "EAGLE", "AGIS", "Num")
+  names_col = c("MHPA", "UKGTS", "GHT","FOST", "LOGTS", "EAGLE", "AGIS", "N.Unique", "Total")
   names_row = c(">10%", "2-10%", "0.5-2%", "<0.5%", "Total")
   df.criteria_reproducibility_md = data.frame(matrix(0, nrow=length(names_row), ncol=length(names_col)))
   colnames(df.criteria_reproducibility_md) = names_col
@@ -1271,12 +1271,14 @@ checkCriteriaReproducibility = function()
     ght = fost = mhpa = logts = ukgts = eagle = agis = F
     row = row2 = ""
     id = df.best_match[pat.i,"Patient.ID"]
+    eye = df.best_match[pat.i,"Eye.Vf"]
     date1 = df.best_match[pat.i,"Date.Vf"]
 
     for(pat.j in which(as.integer(df.criteria_results[,"Patient.ID"]) == id)){
       date2 = as.Date.POSIXct(as.double(df.criteria_results[pat.j,"Date.Time"]))
+      eye2 = df.criteria_results[pat.j,"Eye"]
 
-      if(date2 > date1){
+      if((date2 > date1) && (eye2 == eye)){
 
         md = df.best_match[pat.i,"MD.pval"]
 
@@ -1316,17 +1318,20 @@ checkCriteriaReproducibility = function()
           row2 = "6"
         }
 
-        if((ght == F) && (fost == F) && (mhpa == F) && (ukgts == F) && (logts == F) && (eagle == F) && (agis == F)){
-          if((df.best_match[pat.i,"GHT"] == T) || (df.best_match[pat.i,"FOST"] == T) ||
-             (df.best_match[pat.i,"MHPA"] == T) || (df.best_match[pat.i,"UKGTS"] == T) ||
-             (df.best_match[pat.i,"LOGTS"] == T) || (df.best_match[pat.i,"EAGLE"] == T) ||
-             (df.best_match[pat.i,"AGIS"] == T)){
-            df.criteria_reproducibility_md[row,"Num"] = df.criteria_reproducibility_md[row,"Num"] + 1
-            df.criteria_reproducibility_os[row2,"Num"] = df.criteria_reproducibility_os[row2,"Num"] + 1
+        if((df.best_match[pat.i,"GHT"] == T) || (df.best_match[pat.i,"FOST"] == T) ||
+           (df.best_match[pat.i,"MHPA"] == T) || (df.best_match[pat.i,"UKGTS"] == T) ||
+           (df.best_match[pat.i,"LOGTS"] == T) || (df.best_match[pat.i,"EAGLE"] == T) ||
+           (df.best_match[pat.i,"AGIS"] == T)){
+          df.criteria_reproducibility_md[row,"Total"] = df.criteria_reproducibility_md[row,"Total"] + 1
+          df.criteria_reproducibility_os[row2,"Total"] = df.criteria_reproducibility_os[row2,"Total"] + 1
+
+          if((ght == F) && (fost == F) && (mhpa == F) && (ukgts == F) && (logts == F) && (eagle == F) && (agis == F)){
+            df.criteria_reproducibility_md[row,"N.Unique"] = df.criteria_reproducibility_md[row,"N.Unique"] + 1
+            df.criteria_reproducibility_os[row2,"N.Unique"] = df.criteria_reproducibility_os[row2,"N.Unique"] + 1
           }
         }
 
-        if((ght == F) && (df.best_match[pat.i,"GHT"] == T)){
+        if(df.best_match[pat.i,"GHT"] == T){
           df.criteria_reproducibility_md["Total","GHT"] = df.criteria_reproducibility_md["Total","GHT"] + 1
           df.criteria_reproducibility_os["Total","GHT"] = df.criteria_reproducibility_os["Total","GHT"] + 1
 
@@ -1334,10 +1339,14 @@ checkCriteriaReproducibility = function()
             ght = T
             df.criteria_reproducibility_md[row,"GHT"] = df.criteria_reproducibility_md[row,"GHT"] + 1
             df.criteria_reproducibility_os[row2,"GHT"] = df.criteria_reproducibility_os[row2,"GHT"] + 1
+            #if(ght == F){
+            #  df.criteria_reproducibility_md[row,"GHT"] = df.criteria_reproducibility_md[row,"GHT"] + 1
+            #  df.criteria_reproducibility_os[row2,"GHT"] = df.criteria_reproducibility_os[row2,"GHT"] + 1
+            #}
           }
         }
 
-        if((fost == F) && (df.best_match[pat.i,"FOST"] == T)){
+        if(df.best_match[pat.i,"FOST"] == T){
           df.criteria_reproducibility_md["Total","FOST"] = df.criteria_reproducibility_md["Total","FOST"] + 1
           df.criteria_reproducibility_os["Total","FOST"] = df.criteria_reproducibility_os["Total","FOST"] + 1
 
@@ -1348,7 +1357,7 @@ checkCriteriaReproducibility = function()
           }
         }
 
-        if((mhpa == F) && (df.best_match[pat.i,"MHPA"] == T)){
+        if(df.best_match[pat.i,"MHPA"] == T){
           df.criteria_reproducibility_md["Total","MHPA"] = df.criteria_reproducibility_md["Total","MHPA"] + 1
           df.criteria_reproducibility_os["Total","MHPA"] = df.criteria_reproducibility_os["Total","MHPA"] + 1
 
@@ -1359,7 +1368,7 @@ checkCriteriaReproducibility = function()
           }
         }
 
-        if((logts == F) && (df.best_match[pat.i,"LOGTS"] == T)){
+        if(df.best_match[pat.i,"LOGTS"] == T){
           df.criteria_reproducibility_md["Total","LOGTS"] = df.criteria_reproducibility_md["Total","LOGTS"] + 1
           df.criteria_reproducibility_os["Total","LOGTS"] = df.criteria_reproducibility_os["Total","LOGTS"] + 1
 
@@ -1370,7 +1379,7 @@ checkCriteriaReproducibility = function()
           }
         }
 
-        if((ukgts == F) && (df.best_match[pat.i,"UKGTS"] == T)){
+        if(df.best_match[pat.i,"UKGTS"] == T){
           df.criteria_reproducibility_md["Total","UKGTS"] = df.criteria_reproducibility_md["Total","UKGTS"] + 1
           df.criteria_reproducibility_os["Total","UKGTS"] = df.criteria_reproducibility_os["Total","UKGTS"] + 1
 
