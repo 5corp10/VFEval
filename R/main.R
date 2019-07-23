@@ -798,14 +798,14 @@ checkFostCriteria = function(pat_id)
   if(ght != "Outside normal limits")
     return(FALSE)
 
-  df.VF_PD = data.frame(t(df.vf_data[VF_V_OFST+pat_id, PDP_H_OFST:(PDP_H_OFST+VF_H_SIZE-1)]))
+  df.VF_PDp = data.frame(t(df.vf_data[VF_V_OFST+pat_id, PDP_H_OFST:(PDP_H_OFST+VF_H_SIZE-1)]))
 
 
   for(pt1 in 1:VF_H_SIZE)
   {
-    if(!(is.na(df.VF_PD[pt1,1])))
+    if(!(is.na(df.VF_PDp[pt1,1])))
     {
-      if((df.VF_PD[pt1,1] <= 5))
+      if((df.VF_PDp[pt1,1] <= 5))
       {
         print(paste0("pt1=", pt1))
 
@@ -813,9 +813,9 @@ checkFostCriteria = function(pat_id)
         {
           pt2 = df.pt_mapping[pt1,n1]
 
-          if(!(is.na(df.VF_PD[pt2,1])))
+          if(!(is.na(df.VF_PDp[pt2,1])))
           {
-            if(df.VF_PD[pt2,1] <= 5)
+            if(df.VF_PDp[pt2,1] <= 5)
             {
               print(paste0("pt2=", pt2))
 
@@ -823,9 +823,9 @@ checkFostCriteria = function(pat_id)
               {
                 pt3 = df.pt_mapping[pt2,n2]
 
-                if(!(is.na(df.VF_PD[pt3,1])))
+                if(!(is.na(df.VF_PDp[pt3,1])))
                 {
-                  if(df.VF_PD[pt3,1] <= 5)
+                  if(df.VF_PDp[pt3,1] <= 5)
                   {
                     if(pt1 != pt3)
                     {
