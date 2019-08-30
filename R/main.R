@@ -440,7 +440,7 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
     # modify name of each bin
     md.db = list(md.db_0, md.db_13, md.db_45, md.db_6)
     for(row in 1:nrow(df.results_os_cluster)){
-      df.results_os_cluster[row,1] = paste0(df.results_os_cluster[row,1], "\nmed=", median(md.db[[row]]), "dB", "\nN=", df.results_os_cluster[row,"Total"])
+      df.results_os_cluster[row,1] = paste0(df.results_os_cluster[row,1], "\nmed=", round(median(md.db[[row]]),1), "dB", "\nN=", df.results_os_cluster[row,"Total"])
     }
 
     # generate data frame to be graphed
@@ -521,7 +521,7 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
     # modify name of each bin
     md.db = list(md.db_10, md.db_5, md.db_1, md.db_05)
     for(row in 1:nrow(df.results_md_cluster)){
-      df.results_md_cluster[row,1] = paste0(df.results_md_cluster[row,1], "\nmed=", median(md.db[[row]]), "dB", "\nN=",df.results_md_cluster[row,"Total"])
+      df.results_md_cluster[row,1] = paste0(df.results_md_cluster[row,1], "\nmed=", round(median(md.db[[row]]),1), "dB", "\nN=",df.results_md_cluster[row,"Total"])
     }
 
     # generate data frame to be graphed
@@ -563,10 +563,18 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
                        n=df.criteria_reproducibility_md[,c("HAP2.T","UKGTS.T","GHT.T","FOST.T","LOGTS.T")], methods="wilson")
 
     # modify name of each bin
-    #x_names = paste0(df.criteria_reproducibility_md[1:4,1], "\nN=", df.criteria_reproducibility_md[1:4, "Total"])
+    x_names=c("","","","")
+    for(row in 1:nrow(df.results_md_cluster)){
+      x_names[row] = paste0(df.results_md_cluster[row,1], "\n",
+                            df.criteria_reproducibility_md[row,"HAP2.T"], "|",
+                            df.criteria_reproducibility_md[row,"UKGTS.T"], "|",
+                            df.criteria_reproducibility_md[row,"GHT.T"], "|",
+                            df.criteria_reproducibility_md[row,"FOST.T"], "|",
+                            df.criteria_reproducibility_md[row,"LOGTS.T"])
+    }
 
     # generate data frame to be graphed
-    df.results_graph = cbind(MD=df.criteria_reproducibility_md[,"MD"], CI[,12:16])
+    df.results_graph = cbind(MD=x_names, CI[,12:16])
     colnames(df.results_graph)[2:6] = names_col[1:5]
     df.results_graph = within(df.results_graph,  MD <- factor(MD, levels=MD))
     print(df.results_graph)
@@ -594,11 +602,18 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
     CI = binom.confint(x=df.criteria_reproducibility_os[,c("HAP2","UKGTS","GHT","FOST","LOGTS")],
                         n=df.criteria_reproducibility_os[,c("HAP2.T","UKGTS.T","GHT.T","FOST.T","LOGTS.T")], methods="wilson")
 
-    # modify name of each bin
-    #x_names = paste0(df.criteria_reproducibility_os[1:4,1], "\nN=", df.criteria_reproducibility_os[1:4, "Total"])
+    x_names=c("","","","")
+    for(row in 1:nrow(df.results_md_cluster)){
+      x_names[row] = paste0(df.results_md_cluster[row,1], "\n",
+                            df.criteria_reproducibility_os[row,"HAP2.T"], "|",
+                            df.criteria_reproducibility_os[row,"UKGTS.T"], "|",
+                            df.criteria_reproducibility_os[row,"GHT.T"], "|",
+                            df.criteria_reproducibility_os[row,"FOST.T"], "|",
+                            df.criteria_reproducibility_os[row,"LOGTS.T"])
+    }
 
     # generate data frame to be graphed
-    df.results_graph = cbind(OCT.Score=df.criteria_reproducibility_os[,"OCT.Score"], CI[,12:16])
+    df.results_graph = cbind(OCT.Score=x_names, CI[,12:16])
     colnames(df.results_graph)[2:6] = names_col[1:5]
     df.results_graph = within(df.results_graph,  OCT.Score <- factor(OCT.Score, levels=OCT.Score))
     print(df.results_graph)
