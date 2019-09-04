@@ -604,7 +604,7 @@ printClusteredHist = function(df.results = df.best_match, x_var = "os")
 
     x_names=c("","","","")
     for(row in 1:nrow(df.results_md_cluster)){
-      x_names[row] = paste0(df.results_md_cluster[row,1], "\n",
+      x_names[row] = paste0(df.results_os_cluster[row,1], "\n",
                             df.criteria_reproducibility_os[row,"HAP2.T"], "|",
                             df.criteria_reproducibility_os[row,"UKGTS.T"], "|",
                             df.criteria_reproducibility_os[row,"GHT.T"], "|",
@@ -1604,3 +1604,14 @@ checkCriteriaReproducibility = function()
   print(df.criteria_reproducibility_os)
 }
 
+age = vector()
+gender = vector()
+for(id in df.best_match$Patient.ID){
+  for(j in 1:nrow(df.mrw_data)){
+    if(id == df.mrw_data[j,"Patient.ID"]){
+      age = c(age,df.mrw_data[j,"Age"])
+      gender = c(gender,df.mrw_data[j,"Gender"])
+      break
+    }
+  }
+}
