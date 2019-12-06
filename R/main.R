@@ -1474,15 +1474,19 @@ checkCriteriaReproducibility = function()
   rownames(df.criteria_reproducibility_os) = names_row
   df.criteria_reproducibility_os = data.frame("OCT.Score"=rownames(df.criteria_reproducibility_os), df.criteria_reproducibility_os)
 
+  followup_times = vector()
+
   for(pat.i in 1:nrow(df.best_match)){
     row = row2 = ""
     id = df.best_match[pat.i,"Patient.ID"]
     eye = df.best_match[pat.i,"Eye.Vf"]
     date1 = df.best_match[pat.i,"Date.Vf"]
+    #print(pat.i)
 
     for(pat.j in which(as.integer(df.criteria_results[,"Patient.ID"]) == id)){
       date2 = as.Date.POSIXct(as.double(df.criteria_results[pat.j,"Date.Time"]))
       eye2 = df.criteria_results[pat.j,"Eye"]
+      #print(pat.j)
 
       if((date2 > date1) && (eye2 == eye)){
 
@@ -1574,6 +1578,10 @@ checkCriteriaReproducibility = function()
           }
         }
 
+        if((df.best_match[pat.i,"HAP2"] == T) || (df.best_match[pat.i,"UKGTS"] == T) || (df.best_match[pat.i,"GHT"] == T) || (df.best_match[pat.i,"FOST"] == T) || (df.best_match[pat.i,"LOGTS"] == T)){
+          #print(date2-date1)
+          followup_times = c(followup_times, date2-date1)
+        }
         #if(df.best_match[pat.i,"GHT"] == T){
         #  df.criteria_reproducibility_md[row,"GHT.T"] = df.criteria_reproducibility_md[row,"GHT.T"] + 1
         #  df.criteria_reproducibility_os[row2,"GHT.T"] = df.criteria_reproducibility_os[row2,"GHT.T"] + 1
@@ -1600,6 +1608,7 @@ checkCriteriaReproducibility = function()
 
   assign("df.criteria_reproducibility_md", df.criteria_reproducibility_md, envir = .GlobalEnv)
   assign("df.criteria_reproducibility_os", df.criteria_reproducibility_os, envir = .GlobalEnv)
+  assign("followup_times", followup_times, envir = .GlobalEnv)
   print(df.criteria_reproducibility_md)
   print(df.criteria_reproducibility_os)
 }
