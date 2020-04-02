@@ -882,7 +882,7 @@ checkMhpaCriteria = function(pat_id)
   psd = df.vf_data[VF_V_OFST+pat_id,PSD_H_OFST]
   if(!(is.na(psd)))
   {
-    if(psd != "10.0%")
+    if(psd < 0.1)
       return(TRUE)
   }
 
@@ -1152,7 +1152,7 @@ matchVfToOct = function(window = 4)
 {
   assign("df.criteria_results", arrange(df.criteria_results, Patient.ID), envir = .GlobalEnv)
   assign("df.rnfl_data", arrange(df.rnfl_data, StudyID), envir = .GlobalEnv)
-  assign("df.mrw_data", arrange(df.mrw_data, StudyID), envir = .GlobalEnv)
+  assign("df.mrw_data", arrange(df.mrw_data, Patient.ID), envir = .GlobalEnv)
 
 
   assign("df.gcl_data", arrange(df.gcl_data, StudyID), envir = .GlobalEnv)
@@ -1208,7 +1208,7 @@ matchVfToOct = function(window = 4)
         }
       }
 
-      for(mrw.i in which(df.mrw_data[,"StudyID"] == vf.v)){
+      for(mrw.i in which(df.mrw_data[,"Patient.ID"] == vf.v)){
         mrw.eye = as.integer(df.mrw_data[mrw.i,"Eye"])
         mrw.epoch = as.integer(as.POSIXct(df.mrw_data[mrw.i,"ExamDate"]))
 
